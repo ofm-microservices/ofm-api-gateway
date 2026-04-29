@@ -48,4 +48,4 @@ type SignUpInternalErrorResponse struct {
 // @Failure 409 {object} SignUpConflictResponse
 // @Failure 500 {object} SignUpInternalErrorResponse
 // @Router /auth/sign-up [post]
-func swaggerSignUpDoc() {}
+func swaggerSignUpDoc() {} // NOSONAR: required Swagger annotation anchor
