@@ -13,6 +13,10 @@ var ServiceModule = fx.Options(
 )
 
 // ProvideRegistrationService constructs the registration application service.
-func ProvideRegistrationService(pub service.RegistrationPublisher, lg logging.Logger) (service.RegistrationService, error) {
-	return service.New(pub, lg)
+func ProvideRegistrationService(
+	pub service.RegistrationPublisher,
+	tokens service.TokenIssuer,
+	lg logging.Logger,
+) (service.RegistrationService, error) {
+	return service.New(pub, tokens, lg)
 }

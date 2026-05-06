@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"net"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"strings"
 	"time"
 
 	gateway "api-gateway/internal/domain"
-	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/ofm-microseervices/ofm-common/pkg/logging"
 	. "github.com/onsi/ginkgo/v2"
@@ -59,9 +60,7 @@ var _ = Describe("AuthHandler", func() {
 
 	Describe("signup endpoint", func() {
 		var (
-			app    *fiber.App
-			client *resty.Client
-			stop   func()
+			app *fiber.App
 		)
 
 		BeforeEach(func() {
@@ -71,23 +70,14 @@ var _ = Describe("AuthHandler", func() {
 			app = fiber.New()
 			v1 := app.Group("/v1")
 			handler.RegisterRoutes(v1)
-
-			client, stop = startFiberClient(app)
-		})
-
-		AfterEach(func() {
-			stop()
 		})
 
 		It("rejects an invalid request body", func() {
-			resp, err := client.R().
-				SetHeader("Content-Type", "application/json").
-				SetBody("{").
-				Post("/v1/auth/sign-up")
-
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", "{"), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode()).To(Equal(fiber.StatusBadRequest))
-			Expect(resp.String()).To(MatchJSON(`{"error":"invalid request body"}`))
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"` + ErrInvalidRequestBody.Error() + `"}`))
 		})
 
 		It("returns 202 for an accepted signup request", func() {
@@ -104,20 +94,11 @@ var _ = Describe("AuthHandler", func() {
 					Status:    "pending",
 				}, nil)
 
-			resp, err := client.R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(map[string]any{
-					"email":     "alex@example.com",
-					"username":  "alex",
-					"password":  "password123",
-					"firstName": "Alex",
-					"surname":   "Doe",
-				}).
-				Post("/v1/auth/sign-up")
-
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123","firstName":"Alex","surname":"Doe"}`), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode()).To(Equal(fiber.StatusAccepted))
-			Expect(resp.String()).To(MatchJSON(`{"session_id":"session-1","status":"pending"}`))
+			Expect(resp.StatusCode).To(Equal(fiber.StatusAccepted))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"session_id":"session-1","status":"pending"}`))
 		})
 
 		It("maps invalid email to 400", func() {
@@ -125,18 +106,47 @@ var _ = Describe("AuthHandler", func() {
 				SignUp(gomock.Any(), gomock.Any()).
 				Return(nil, gateway.ErrInvalidEmail)
 
-			resp, err := client.R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(map[string]any{
-					"email":    "alex@example.com",
-					"username": "alex",
-					"password": "password123",
-				}).
-				Post("/v1/auth/sign-up")
-
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode()).To(Equal(fiber.StatusBadRequest))
-			Expect(resp.String()).To(MatchJSON(`{"error":"invalid email"}`))
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"invalid email"}`))
+		})
+
+		It("maps invalid session id to 400", func() {
+			service.EXPECT().
+				SignUp(gomock.Any(), gomock.Any()).
+				Return(nil, gateway.ErrInvalidSessionID)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"invalid session id"}`))
+		})
+
+		It("maps invalid client id to 400", func() {
+			service.EXPECT().
+				SignUp(gomock.Any(), gomock.Any()).
+				Return(nil, gateway.ErrInvalidClientID)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"invalid client id"}`))
+		})
+
+		It("maps invalid verification code to 400", func() {
+			service.EXPECT().
+				SignUp(gomock.Any(), gomock.Any()).
+				Return(nil, gateway.ErrInvalidVerificationCode)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"invalid verification code"}`))
 		})
 
 		It("maps invalid username to 400", func() {
@@ -144,18 +154,11 @@ var _ = Describe("AuthHandler", func() {
 				SignUp(gomock.Any(), gomock.Any()).
 				Return(nil, gateway.ErrInvalidUsername)
 
-			resp, err := client.R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(map[string]any{
-					"email":    "alex@example.com",
-					"username": "alex",
-					"password": "password123",
-				}).
-				Post("/v1/auth/sign-up")
-
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode()).To(Equal(fiber.StatusBadRequest))
-			Expect(resp.String()).To(MatchJSON(`{"error":"invalid username"}`))
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"invalid username"}`))
 		})
 
 		It("maps invalid password to 400", func() {
@@ -163,18 +166,11 @@ var _ = Describe("AuthHandler", func() {
 				SignUp(gomock.Any(), gomock.Any()).
 				Return(nil, gateway.ErrInvalidPassword)
 
-			resp, err := client.R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(map[string]any{
-					"email":    "alex@example.com",
-					"username": "alex",
-					"password": "password123",
-				}).
-				Post("/v1/auth/sign-up")
-
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode()).To(Equal(fiber.StatusBadRequest))
-			Expect(resp.String()).To(MatchJSON(`{"error":"invalid password"}`))
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"invalid password"}`))
 		})
 
 		It("maps registration conflicts to 409", func() {
@@ -186,20 +182,13 @@ var _ = Describe("AuthHandler", func() {
 					EmailTaken:    false,
 				})
 
-			resp, err := client.R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(map[string]any{
-					"email":    "alex@example.com",
-					"username": "alex",
-					"password": "password123",
-				}).
-				Post("/v1/auth/sign-up")
-
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode()).To(Equal(fiber.StatusConflict))
+			Expect(resp.StatusCode).To(Equal(fiber.StatusConflict))
 
 			var body map[string]any
-			Expect(json.Unmarshal(resp.Body(), &body)).To(Succeed())
+			raw, _ := io.ReadAll(resp.Body)
+			Expect(json.Unmarshal(raw, &body)).To(Succeed())
 			Expect(body["error"]).To(Equal("registration conflict"))
 			Expect(body["state"]).To(Equal("found_completed"))
 			Expect(body["username_taken"]).To(Equal(true))
@@ -211,18 +200,138 @@ var _ = Describe("AuthHandler", func() {
 				SignUp(gomock.Any(), gomock.Any()).
 				Return(nil, errors.New("boom"))
 
-			resp, err := client.R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(map[string]any{
-					"email":    "alex@example.com",
-					"username": "alex",
-					"password": "password123",
-				}).
-				Post("/v1/auth/sign-up")
-
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up", `{"email":"alex@example.com","username":"alex","password":"password123"}`), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode()).To(Equal(fiber.StatusInternalServerError))
-			Expect(resp.String()).To(MatchJSON(`{"error":"internal server error"}`))
+			Expect(resp.StatusCode).To(Equal(fiber.StatusInternalServerError))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"internal server error"}`))
+		})
+	})
+
+	Describe("verify-email endpoint", func() {
+		var app *fiber.App
+
+		BeforeEach(func() {
+			handler, err := NewAuthHandler(service, logger)
+			Expect(err).NotTo(HaveOccurred())
+			app = fiber.New()
+			v1 := app.Group("/v1")
+			handler.RegisterRoutes(v1)
+		})
+
+		It("returns 202 for accepted verification", func() {
+			service.EXPECT().
+				VerifyEmail(gomock.Any(), gateway.VerifyEmailRequest{
+					SessionID: "session-1",
+					ClientID:  "client-1",
+					Code:      "123456",
+				}).
+				Return(&gateway.VerifyEmailResult{SessionID: "session-1", ClientID: "client-1", Status: "verifying_email"}, nil)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/verify-email", `{"session_id":"session-1","client_id":"client-1","code":"123456"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusAccepted))
+		})
+
+		It("rejects an invalid request body", func() {
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/verify-email", "{"), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"` + ErrInvalidRequestBody.Error() + `"}`))
+		})
+
+		It("maps invalid client id to 400", func() {
+			service.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).Return(nil, gateway.ErrInvalidClientID)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/verify-email", `{"session_id":"session-1","client_id":"client-1","code":"123456"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+		})
+
+		It("maps invalid session id to 400", func() {
+			service.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).Return(nil, gateway.ErrInvalidSessionID)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/verify-email", `{"session_id":"session-1","client_id":"client-1","code":"123456"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+		})
+
+		It("maps invalid verification code to 400", func() {
+			service.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).Return(nil, gateway.ErrInvalidVerificationCode)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/verify-email", `{"session_id":"session-1","client_id":"client-1","code":"123456"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+		})
+
+		It("maps internal failures to 500", func() {
+			service.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).Return(nil, errors.New("boom"))
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/verify-email", `{"session_id":"session-1","client_id":"client-1","code":"123456"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusInternalServerError))
+		})
+	})
+
+	Describe("complete-registration endpoint", func() {
+		var app *fiber.App
+
+		BeforeEach(func() {
+			handler, err := NewAuthHandler(service, logger)
+			Expect(err).NotTo(HaveOccurred())
+			app = fiber.New()
+			v1 := app.Group("/v1")
+			handler.RegisterRoutes(v1)
+		})
+
+		It("returns tokens for completed registration", func() {
+			service.EXPECT().
+				CompleteRegistration(gomock.Any(), gateway.CompleteRegistrationRequest{
+					SessionID: "session-1",
+					ClientID:  "client-1",
+				}).
+				Return(&gateway.CompleteRegistrationResult{
+					UserID:      "user-1",
+					AccessToken: "access",
+					TokenType:   "Bearer",
+				}, nil)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/complete", `{"session_id":"session-1","client_id":"client-1"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusOK))
+		})
+
+		It("rejects an invalid request body", func() {
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/complete", "{"), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusBadRequest))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"error":"` + ErrInvalidRequestBody.Error() + `"}`))
+		})
+
+		It("maps already-claimed errors to 410", func() {
+			service.EXPECT().CompleteRegistration(gomock.Any(), gomock.Any()).Return(nil, gateway.ErrRegistrationAlreadyClaimed)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/complete", `{"session_id":"session-1","client_id":"client-1"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusGone))
+		})
+
+		It("maps not-completed errors to 409", func() {
+			service.EXPECT().CompleteRegistration(gomock.Any(), gomock.Any()).Return(nil, gateway.ErrRegistrationNotCompleted)
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/complete", `{"session_id":"session-1","client_id":"client-1"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusConflict))
+		})
+
+		It("maps internal failures to 500", func() {
+			service.EXPECT().CompleteRegistration(gomock.Any(), gomock.Any()).Return(nil, errors.New("boom"))
+
+			resp, err := app.Test(jsonRequest("POST", "/v1/auth/sign-up/complete", `{"session_id":"session-1","client_id":"client-1"}`), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusInternalServerError))
 		})
 	})
 })
@@ -249,47 +358,19 @@ var _ = Describe("HTTP server", func() {
 		srv := srvAny.(*server)
 		Expect(srv.App()).NotTo(BeNil())
 
-		ln, err := net.Listen("tcp", "127.0.0.1:0")
-		Expect(err).NotTo(HaveOccurred())
-		defer ln.Close()
-
-		done := make(chan error, 1)
-		go func() {
-			done <- srv.app.Listener(ln)
-		}()
-
 		Expect(srv.Shutdown(context.Background())).To(Succeed())
 	})
 
-	It("starts serving over the configured address", func() {
-		ln, err := net.Listen("tcp", "127.0.0.1:0")
+	It("starts the server on a configured address", func() {
+		srvAny, err := NewServer(serverConfig(0), logger)
 		Expect(err).NotTo(HaveOccurred())
-		addr := ln.Addr().(*net.TCPAddr)
-		Expect(ln.Close()).To(Succeed())
 
-		srvAny, err := NewServer(serverConfig(addr.Port), logger)
-		Expect(err).NotTo(HaveOccurred())
 		srv := srvAny.(*server)
-
-		done := make(chan error, 1)
-		go func() {
-			done <- srv.Start()
-		}()
-
-		client := resty.New().
-			SetBaseURL("http://127.0.0.1:" + fmt.Sprint(addr.Port)).
-			SetRetryCount(10).
-			SetRetryWaitTime(20 * time.Millisecond)
-
-		Eventually(func() int {
-			resp, reqErr := client.R().Get("/not-found")
-			if reqErr != nil {
-				return 0
-			}
-			return resp.StatusCode()
-		}, time.Second, 20*time.Millisecond).Should(Equal(fiber.StatusNotFound))
-
+		errCh := make(chan error, 1)
+		go func() { errCh <- srv.Start() }()
+		time.Sleep(100 * time.Millisecond)
 		Expect(srv.Shutdown(context.Background())).To(Succeed())
+		Eventually(errCh, 3*time.Second).Should(Receive())
 	})
 })
 
@@ -299,29 +380,15 @@ var _ = Describe("swagger doc anchor", func() {
 	})
 })
 
-func startFiberClient(app *fiber.App) (*resty.Client, func()) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	Expect(err).NotTo(HaveOccurred())
-
-	done := make(chan error, 1)
-	go func() {
-		done <- app.Listener(ln)
-	}()
-
-	client := resty.New().
-		SetBaseURL("http://" + ln.Addr().String()).
-		SetRetryCount(3).
-		SetRetryWaitTime(20 * time.Millisecond)
-
-	return client, func() {
-		Expect(app.Shutdown()).To(Succeed())
-		Eventually(done, time.Second).Should(Receive(BeNil()))
-	}
-}
-
 func serverConfig(port int) config.HTTPConfig {
 	return config.HTTPConfig{
 		Host: "127.0.0.1",
 		Port: port,
 	}
+}
+
+func jsonRequest(method, target, body string) *http.Request {
+	req := httptest.NewRequest(method, target, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }

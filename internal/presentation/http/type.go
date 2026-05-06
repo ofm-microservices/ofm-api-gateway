@@ -15,6 +15,8 @@ type RegistrationService = service.RegistrationService
 type AuthHandler interface {
 	RegisterRoutes(router fiber.Router)
 	HandleSignUp(c *fiber.Ctx) error
+	HandleVerifyEmail(c *fiber.Ctx) error
+	HandleCompleteRegistration(c *fiber.Ctx) error
 }
 
 // Server exposes the api-gateway HTTP server lifecycle.

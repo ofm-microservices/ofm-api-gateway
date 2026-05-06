@@ -10,6 +10,7 @@ type Config struct {
 	App              AppConfig
 	HTTP             HTTPConfig
 	RegistrationSaga RegistrationSagaConfig
+	AuthService      AuthServiceConfig
 }
 
 // Load reads environment variables into Config and applies defaults.

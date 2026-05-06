@@ -3,10 +3,17 @@ package gateway
 import "errors"
 
 var (
-	ErrInvalidEmail              = errors.New("invalid email")
-	ErrInvalidPassword           = errors.New("invalid password")
-	ErrInvalidUsername           = errors.New("invalid username")
-	ErrFailedToStartRegistration = errors.New("failed to start registration")
+	ErrInvalidEmail                 = errors.New("invalid email")
+	ErrInvalidPassword              = errors.New("invalid password")
+	ErrInvalidUsername              = errors.New("invalid username")
+	ErrInvalidSessionID             = errors.New("invalid session id")
+	ErrInvalidClientID              = errors.New("invalid client id")
+	ErrInvalidVerificationCode      = errors.New("invalid verification code")
+	ErrRegistrationNotCompleted     = errors.New("registration is not completed")
+	ErrRegistrationAlreadyClaimed   = errors.New("registration tokens already claimed")
+	ErrFailedToStartRegistration    = errors.New("failed to start registration")
+	ErrFailedToVerifyEmail          = errors.New("failed to verify email")
+	ErrFailedToCompleteRegistration = errors.New("failed to complete registration")
 )
 
 // RegistrationConflictError reports that registration cannot continue because
