@@ -77,4 +77,8 @@ var _ = Describe("Load", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("parse env config"))
 	})
+
+	It("wraps parse env errors directly", func() {
+		Expect(WrapParseEnvConfigError(os.ErrInvalid)).To(MatchError(ContainSubstring("parse env config")))
+	})
 })

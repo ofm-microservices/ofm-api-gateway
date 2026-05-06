@@ -12,6 +12,7 @@ import (
 	grpcclient "api-gateway/internal/presentation/grpc"
 	"github.com/gofiber/fiber/v2"
 	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	authv1 "github.com/ofm-microseervices/ofm-common/proto/auth/v1"
 	registrationv1 "github.com/ofm-microseervices/ofm-common/proto/registration/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -39,10 +40,34 @@ func (registrationPublisherStub) StartRegistration(context.Context, gateway.Sign
 	return &gateway.SignUpResult{Status: "pending"}, nil
 }
 
+func (registrationPublisherStub) VerifyEmail(context.Context, gateway.VerifyEmailRequest) (*gateway.VerifyEmailResult, error) {
+	return &gateway.VerifyEmailResult{Status: "verifying_email"}, nil
+}
+
+func (registrationPublisherStub) GetRegistrationStatus(context.Context, string, string) (*gateway.RegistrationStatus, error) {
+	return &gateway.RegistrationStatus{Status: "completed", UserID: "user-1"}, nil
+}
+
+type tokenIssuerStub struct{}
+
+func (tokenIssuerStub) IssueRegistrationTokens(context.Context, string) (*gateway.CompleteRegistrationResult, error) {
+	return &gateway.CompleteRegistrationResult{TokenType: "Bearer"}, nil
+}
+
+func (tokenIssuerStub) Close() error { return nil }
+
 type registrationServiceStub struct{}
 
 func (registrationServiceStub) SignUp(context.Context, gateway.SignUpRequest) (*gateway.SignUpResult, error) {
 	return &gateway.SignUpResult{Status: "pending"}, nil
+}
+
+func (registrationServiceStub) VerifyEmail(context.Context, gateway.VerifyEmailRequest) (*gateway.VerifyEmailResult, error) {
+	return &gateway.VerifyEmailResult{Status: "verifying_email"}, nil
+}
+
+func (registrationServiceStub) CompleteRegistration(context.Context, gateway.CompleteRegistrationRequest) (*gateway.CompleteRegistrationResult, error) {
+	return &gateway.CompleteRegistrationResult{TokenType: "Bearer"}, nil
 }
 
 type authHandlerStub struct {
@@ -57,6 +82,14 @@ func (h *authHandlerStub) RegisterRoutes(router fiber.Router) {
 }
 
 func (h *authHandlerStub) HandleSignUp(*fiber.Ctx) error {
+	return nil
+}
+
+func (h *authHandlerStub) HandleVerifyEmail(*fiber.Ctx) error {
+	return nil
+}
+
+func (h *authHandlerStub) HandleCompleteRegistration(*fiber.Ctx) error {
 	return nil
 }
 
@@ -149,8 +182,17 @@ var _ = Describe("FX providers", func() {
 		Expect(lc.hooks).To(BeEmpty())
 	})
 
+	It("constructs and syncs the logger", func() {
+		lc := &lifecycleStub{}
+		logger, err := ProvideLogger(lc, cfg)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(logger).NotTo(BeNil())
+		Expect(lc.hooks).To(HaveLen(1))
+		Expect(func() { _ = lc.hooks[0].OnStop(context.Background()) }).NotTo(Panic())
+	})
+
 	It("constructs the registration application service", func() {
-		svc, err := ProvideRegistrationService(registrationPublisherStub{}, lg)
+		svc, err := ProvideRegistrationService(registrationPublisherStub{}, tokenIssuerStub{}, lg)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(svc).NotTo(BeNil())
@@ -160,6 +202,19 @@ var _ = Describe("FX providers", func() {
 		httpSrv, err := ProvideHTTPServer(cfg, lg)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(httpSrv).NotTo(BeNil())
+	})
+
+	It("registers the HTTP server lifecycle hook", func() {
+		lc := &lifecycleStub{}
+		srv := &httpServerStub{app: fiber.New()}
+
+		InvokeRunHTTPServer(lc, srv, lg)
+
+		Expect(lc.hooks).To(HaveLen(1))
+		Expect(lc.hooks[0].OnStart(context.Background())).To(Succeed())
+		Expect(func() { _ = lc.hooks[0].OnStop(context.Background()) }).NotTo(Panic())
+		Eventually(func() int { return srv.startCalls }).Should(Equal(1))
+		Eventually(func() int { return srv.shutdownCalls }).Should(Equal(1))
 	})
 
 	It("constructs the v1 auth handler", func() {
@@ -207,6 +262,20 @@ var _ = Describe("FX providers", func() {
 		Expect(lc.hooks[0].OnStop(context.Background())).To(Succeed())
 	})
 
+	It("constructs a token issuer and registers its shutdown hook", func() {
+		server, address := startAuthServer()
+		defer server.Stop()
+
+		lc := &lifecycleStub{}
+		cfg.AuthService.Address = address
+
+		tok, err := ProvideTokenIssuer(lc, cfg, lg)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(tok).NotTo(BeNil())
+		Expect(lc.hooks).To(HaveLen(1))
+		Expect(lc.hooks[0].OnStop(context.Background())).To(Succeed())
+	})
+
 	It("returns grpc dial errors from registration publisher construction", func() {
 		lc := &lifecycleStub{}
 		cfg.RegistrationSaga.Address = ""
@@ -215,6 +284,16 @@ var _ = Describe("FX providers", func() {
 
 		Expect(pub).To(BeNil())
 		Expect(err).To(MatchError(grpcclient.ErrEmptyAddress))
+		Expect(lc.hooks).To(BeEmpty())
+	})
+
+	It("returns grpc dial errors from token issuer construction", func() {
+		lc := &lifecycleStub{}
+		cfg.AuthService.Address = ""
+
+		tok, err := ProvideTokenIssuer(lc, cfg, lg)
+		Expect(tok).To(BeNil())
+		Expect(err).To(HaveOccurred())
 		Expect(lc.hooks).To(BeEmpty())
 	})
 
@@ -235,4 +314,26 @@ func startRegistrationServer() (*grpc.Server, string) {
 	}()
 
 	return server, lis.Addr().String()
+}
+
+func startAuthServer() (*grpc.Server, string) {
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	Expect(err).NotTo(HaveOccurred())
+
+	server := grpc.NewServer()
+	authv1.RegisterAuthQueryServiceServer(server, authServerStub{})
+
+	go func() {
+		_ = server.Serve(lis)
+	}()
+
+	return server, lis.Addr().String()
+}
+
+type authServerStub struct {
+	authv1.UnimplementedAuthQueryServiceServer
+}
+
+func (authServerStub) IssueRegistrationTokens(context.Context, *authv1.IssueRegistrationTokensRequest) (*authv1.IssueRegistrationTokensResponse, error) {
+	return &authv1.IssueRegistrationTokensResponse{TokenType: "Bearer"}, nil
 }

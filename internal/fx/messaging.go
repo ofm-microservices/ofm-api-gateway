@@ -13,6 +13,7 @@ import (
 // MessagingModule provides the registration-saga client dependency.
 var MessagingModule = fx.Options(
 	fx.Provide(ProvideRegistrationPublisher),
+	fx.Provide(ProvideTokenIssuer),
 )
 
 // ProvideRegistrationPublisher constructs the saga client and wires its
@@ -25,6 +26,29 @@ func ProvideRegistrationPublisher(
 	client, err := registrationgrpc.NewClient(cfg.RegistrationSaga, lg)
 	if err != nil {
 		lg.Error("connect registration saga grpc failed", logging.Err(err))
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
+
+	return client, nil
+}
+
+// ProvideTokenIssuer constructs the auth-service client used for final token
+// exchange.
+func ProvideTokenIssuer(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.TokenIssuer, error) {
+	client, err := registrationgrpc.NewAuthClient(cfg.AuthService, lg)
+	if err != nil {
+		lg.Error("connect auth service grpc failed", logging.Err(err))
 		return nil, err
 	}
 

@@ -108,6 +108,29 @@ var _ = Describe("publisher", func() {
 		})))
 	})
 
+	It("uses the caller deadline when flushing", func() {
+		nc, err := nats.Connect(natsCfg.URL)
+		Expect(err).NotTo(HaveOccurred())
+		defer nc.Close()
+
+		pubAny, err := NewPublisher(natsCfg, logger)
+		Expect(err).NotTo(HaveOccurred())
+		pub := pubAny.(*publisher)
+		defer pub.Close()
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		result, err := pub.StartRegistration(ctx, gateway.SignUpRequest{
+			Email:    "alex@example.com",
+			Username: "alex",
+			Password: "password123",
+		})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.Status).To(Equal("pending"))
+	})
+
 	It("supports authenticated nats connections", func() {
 		pub, err := NewPublisher(natsAuthCfg, logger)
 		Expect(err).NotTo(HaveOccurred())
@@ -130,6 +153,13 @@ var _ = Describe("publisher", func() {
 		Expect(result).To(BeNil())
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("publish to nats"))
+	})
+
+	It("covers wrapper helpers", func() {
+		Expect(WrapConnectToNATSError(context.Canceled)).To(MatchError(ContainSubstring("connect to nats")))
+		Expect(WrapMarshalEventError(context.Canceled)).To(MatchError(ContainSubstring("marshal event")))
+		Expect(WrapPublishToNATSError("subject", context.Canceled)).To(MatchError(ContainSubstring("publish to nats (subject)")))
+		Expect(WrapFlushNATSError(context.Canceled)).To(MatchError(ContainSubstring("flush nats publisher")))
 	})
 
 	It("closes a nil publisher safely", func() {

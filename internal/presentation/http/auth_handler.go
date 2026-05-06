@@ -33,15 +33,15 @@ func (h *authHandler) RegisterRoutes(router fiber.Router) {
 	auth := router.Group("/auth")
 
 	auth.Post("/sign-up", h.HandleSignUp)
+	auth.Post("/sign-up/verify-email", h.HandleVerifyEmail)
+	auth.Post("/sign-up/complete", h.HandleCompleteRegistration)
 }
 
 // HandleSignUp parses the public signup payload and starts registration.
 func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
 	var req gateway.SignUpRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
 	}
 
 	result, err := h.service.SignUp(c.UserContext(), req)
@@ -52,6 +52,38 @@ func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
 	h.log.Info("sign up request accepted")
 
 	return c.Status(fiber.StatusAccepted).JSON(result)
+}
+
+// HandleVerifyEmail accepts an email verification code and returns immediately
+// after the saga accepts the command.
+func (h *authHandler) HandleVerifyEmail(c *fiber.Ctx) error {
+	var req gateway.VerifyEmailRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.service.VerifyEmail(c.UserContext(), req)
+	if err != nil {
+		return h.MapSignUpError(c, err)
+	}
+
+	return c.Status(fiber.StatusAccepted).JSON(result)
+}
+
+// HandleCompleteRegistration exchanges a completed registration saga for
+// auth-owned tokens.
+func (h *authHandler) HandleCompleteRegistration(c *fiber.Ctx) error {
+	var req gateway.CompleteRegistrationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.service.CompleteRegistration(c.UserContext(), req)
+	if err != nil {
+		return h.MapSignUpError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(result)
 }
 
 // MapSignUpError translates signup failures into stable HTTP responses.
@@ -65,6 +97,16 @@ func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid password"})
 	case gateway.ErrInvalidUsername:
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid username"})
+	case gateway.ErrInvalidSessionID:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid session id"})
+	case gateway.ErrInvalidClientID:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid client id"})
+	case gateway.ErrInvalidVerificationCode:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid verification code"})
+	case gateway.ErrRegistrationNotCompleted:
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "registration is not completed"})
+	case gateway.ErrRegistrationAlreadyClaimed:
+		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "registration tokens already claimed"})
 	default:
 		if errors.As(err, &conflictErr) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{

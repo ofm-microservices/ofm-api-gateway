@@ -55,6 +55,34 @@ func (mr *MockAuthHandlerMockRecorder) HandleSignUp(c any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleSignUp", reflect.TypeOf((*MockAuthHandler)(nil).HandleSignUp), c)
 }
 
+// HandleVerifyEmail mocks base method.
+func (m *MockAuthHandler) HandleVerifyEmail(c *v2.Ctx) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleVerifyEmail", c)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// HandleVerifyEmail indicates an expected call of HandleVerifyEmail.
+func (mr *MockAuthHandlerMockRecorder) HandleVerifyEmail(c any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleVerifyEmail", reflect.TypeOf((*MockAuthHandler)(nil).HandleVerifyEmail), c)
+}
+
+// HandleCompleteRegistration mocks base method.
+func (m *MockAuthHandler) HandleCompleteRegistration(c *v2.Ctx) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleCompleteRegistration", c)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// HandleCompleteRegistration indicates an expected call of HandleCompleteRegistration.
+func (mr *MockAuthHandlerMockRecorder) HandleCompleteRegistration(c any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleCompleteRegistration", reflect.TypeOf((*MockAuthHandler)(nil).HandleCompleteRegistration), c)
+}
+
 // RegisterRoutes mocks base method.
 func (m *MockAuthHandler) RegisterRoutes(router v2.Router) {
 	m.ctrl.T.Helper()

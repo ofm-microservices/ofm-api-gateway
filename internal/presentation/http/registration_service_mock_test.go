@@ -94,3 +94,33 @@ func (mr *MockRegistrationServiceMockRecorder) SignUp(ctx, req any) *gomock.Call
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignUp", reflect.TypeOf((*MockRegistrationService)(nil).SignUp), ctx, req)
 }
+
+// VerifyEmail mocks base method.
+func (m *MockRegistrationService) VerifyEmail(ctx context.Context, req gateway.VerifyEmailRequest) (*gateway.VerifyEmailResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyEmail", ctx, req)
+	ret0, _ := ret[0].(*gateway.VerifyEmailResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VerifyEmail indicates an expected call of VerifyEmail.
+func (mr *MockRegistrationServiceMockRecorder) VerifyEmail(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmail", reflect.TypeOf((*MockRegistrationService)(nil).VerifyEmail), ctx, req)
+}
+
+// CompleteRegistration mocks base method.
+func (m *MockRegistrationService) CompleteRegistration(ctx context.Context, req gateway.CompleteRegistrationRequest) (*gateway.CompleteRegistrationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CompleteRegistration", ctx, req)
+	ret0, _ := ret[0].(*gateway.CompleteRegistrationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CompleteRegistration indicates an expected call of CompleteRegistration.
+func (mr *MockRegistrationServiceMockRecorder) CompleteRegistration(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteRegistration", reflect.TypeOf((*MockRegistrationService)(nil).CompleteRegistration), ctx, req)
+}
