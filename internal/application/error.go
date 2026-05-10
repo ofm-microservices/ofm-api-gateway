@@ -5,5 +5,6 @@ import "errors"
 var (
 	ErrNilRegistrationClient = errors.New("registration client is nil")
 	ErrNilTokenIssuer        = errors.New("token issuer is nil")
+	ErrNilGigClient          = errors.New("gig client is nil")
 	ErrNilLogger             = errors.New("logger is nil")
 )

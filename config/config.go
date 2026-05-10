@@ -9,8 +9,10 @@ import (
 type Config struct {
 	App              AppConfig
 	HTTP             HTTPConfig
+	JWT              JWTConfig
 	RegistrationSaga RegistrationSagaConfig
 	AuthService      AuthServiceConfig
+	GigService       GigServiceConfig
 }
 
 // Load reads environment variables into Config and applies defaults.

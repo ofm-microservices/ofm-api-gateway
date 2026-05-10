@@ -93,6 +93,85 @@ func (h *authHandlerStub) HandleCompleteRegistration(*fiber.Ctx) error {
 	return nil
 }
 
+type gigHandlerStub struct {
+	registered bool
+}
+
+func (h *gigHandlerStub) RegisterRoutes(router fiber.Router) {
+	h.registered = true
+	router.Post("/gigs/drafts", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusAccepted)
+	})
+}
+
+func (h *gigHandlerStub) HandleCreateDraft(*fiber.Ctx) error      { return nil }
+func (h *gigHandlerStub) HandleUpdateBasicInfo(*fiber.Ctx) error  { return nil }
+func (h *gigHandlerStub) HandleReplacePackages(*fiber.Ctx) error  { return nil }
+func (h *gigHandlerStub) HandleReplaceQuestions(*fiber.Ctx) error { return nil }
+func (h *gigHandlerStub) HandleReplaceMedia(*fiber.Ctx) error     { return nil }
+func (h *gigHandlerStub) HandleGetDraft(*fiber.Ctx) error         { return nil }
+func (h *gigHandlerStub) HandlePublish(*fiber.Ctx) error          { return nil }
+
+type gigPublisherStub struct{}
+
+func (gigPublisherStub) CreateDraft(context.Context, gateway.CreateGigDraftRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigPublisherStub) UpdateBasicInfo(context.Context, gateway.UpdateGigBasicInfoRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigPublisherStub) ReplacePackages(context.Context, gateway.ReplaceGigPackagesRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigPublisherStub) ReplaceQuestions(context.Context, gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigPublisherStub) ReplaceMedia(context.Context, gateway.ReplaceGigMediaRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigPublisherStub) GetDraft(context.Context, gateway.GetGigDraftRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigPublisherStub) Publish(context.Context, gateway.PublishGigRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+type gigServiceStub struct{}
+
+func (gigServiceStub) CreateDraft(context.Context, gateway.CreateGigDraftRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) UpdateBasicInfo(context.Context, gateway.UpdateGigBasicInfoRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) ReplacePackages(context.Context, gateway.ReplaceGigPackagesRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) ReplaceQuestions(context.Context, gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) ReplaceMedia(context.Context, gateway.ReplaceGigMediaRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) GetDraft(context.Context, gateway.GetGigDraftRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) Publish(context.Context, gateway.PublishGigRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
 type httpServerStub struct {
 	app           *fiber.App
 	startCalls    int
@@ -135,6 +214,7 @@ var _ = Describe("FX providers", func() {
 		cfg = &config.Config{
 			App:              config.AppConfig{Env: "test", LogLevel: "debug"},
 			HTTP:             config.HTTPConfig{Host: "127.0.0.1", Port: 8080},
+			JWT:              config.JWTConfig{Secret: "local-dev-secret-change-me"},
 			RegistrationSaga: config.RegistrationSagaConfig{Address: "127.0.0.1:9090"},
 		}
 	})
@@ -224,12 +304,21 @@ var _ = Describe("FX providers", func() {
 		Expect(handler).NotTo(BeNil())
 	})
 
+	It("constructs the v1 gig handler", func() {
+		handler, err := ProvideHTTPV1GigHandler(cfg, gigServiceStub{}, lg)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(handler).NotTo(BeNil())
+	})
+
 	It("registers versioned routes", func() {
 		srv := &httpServerStub{app: fiber.New()}
 		handler := &authHandlerStub{}
-		InvokeRegisterHTTPV1Routes(srv, handler)
+		gigHandler := &gigHandlerStub{}
+		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler)
 
 		Expect(handler.registered).To(BeTrue())
+		Expect(gigHandler.registered).To(BeTrue())
 	})
 
 	It("wires HTTP server lifecycle hooks", func() {
@@ -276,6 +365,21 @@ var _ = Describe("FX providers", func() {
 		Expect(lc.hooks[0].OnStop(context.Background())).To(Succeed())
 	})
 
+	It("constructs the gig publisher and gig application service", func() {
+		lc := &lifecycleStub{}
+		cfg.GigService.Address = "127.0.0.1:1"
+
+		pub, err := ProvideGigPublisher(lc, cfg, lg)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(pub).NotTo(BeNil())
+		Expect(lc.hooks).To(HaveLen(1))
+		Expect(lc.hooks[0].OnStop(context.Background())).To(Succeed())
+
+		svc, err := ProvideGigService(gigPublisherStub{}, lg)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(svc).NotTo(BeNil())
+	})
+
 	It("returns grpc dial errors from registration publisher construction", func() {
 		lc := &lifecycleStub{}
 		cfg.RegistrationSaga.Address = ""
@@ -297,6 +401,16 @@ var _ = Describe("FX providers", func() {
 		Expect(lc.hooks).To(BeEmpty())
 	})
 
+	It("returns grpc dial errors from gig publisher construction", func() {
+		lc := &lifecycleStub{}
+		cfg.GigService.Address = ""
+
+		pub, err := ProvideGigPublisher(lc, cfg, lg)
+		Expect(pub).To(BeNil())
+		Expect(err).To(MatchError(grpcclient.ErrEmptyGigServiceAddress))
+		Expect(lc.hooks).To(BeEmpty())
+	})
+
 	It("emits the start log without panicking", func() {
 		Expect(func() { InvokeStartLog(lg) }).NotTo(Panic())
 	})
@@ -304,7 +418,10 @@ var _ = Describe("FX providers", func() {
 
 func startRegistrationServer() (*grpc.Server, string) {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		Skip("gRPC sockets are unavailable in this environment")
+		return nil, ""
+	}
 
 	server := grpc.NewServer()
 	registrationv1.RegisterRegistrationServiceServer(server, fakeRegistrationServer{})
@@ -318,7 +435,10 @@ func startRegistrationServer() (*grpc.Server, string) {
 
 func startAuthServer() (*grpc.Server, string) {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		Skip("gRPC sockets are unavailable in this environment")
+		return nil, ""
+	}
 
 	server := grpc.NewServer()
 	authv1.RegisterAuthQueryServiceServer(server, authServerStub{})

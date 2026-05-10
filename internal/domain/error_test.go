@@ -10,11 +10,11 @@ import (
 func TestDomain(t *testing.T) {
 	t.Helper()
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Domain Suite")
+	RunSpecs(t, "Gateway Domain Suite")
 }
 
-var _ = Describe("RegistrationConflictError", func() {
-	It("returns a stable error string", func() {
-		Expect((&RegistrationConflictError{}).Error()).To(Equal("registration conflict"))
+var _ = Describe("GigConflictError", func() {
+	It("renders a stable error string", func() {
+		Expect((&GigConflictError{State: "draft"}).Error()).To(Equal("gig conflict"))
 	})
 })

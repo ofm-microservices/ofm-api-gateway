@@ -1,7 +1,7 @@
 package service
 
 import (
-	"api-gateway/internal/domain"
+	gateway "api-gateway/internal/domain"
 	"context"
 	"github.com/ofm-microseervices/ofm-common/pkg/logging"
 )
@@ -33,6 +33,30 @@ type RegistrationService interface {
 	VerifyEmail(ctx context.Context, req gateway.VerifyEmailRequest) (*gateway.VerifyEmailResult, error)
 	// CompleteRegistration exchanges a completed saga for auth-owned tokens.
 	CompleteRegistration(ctx context.Context, req gateway.CompleteRegistrationRequest) (*gateway.CompleteRegistrationResult, error)
+}
+
+// GigService validates the public gig draft workflow and delegates
+// orchestration to gig-service.
+type GigService interface {
+	CreateDraft(ctx context.Context, req gateway.CreateGigDraftRequest) (*gateway.Gig, error)
+	UpdateBasicInfo(ctx context.Context, req gateway.UpdateGigBasicInfoRequest) (*gateway.Gig, error)
+	ReplacePackages(ctx context.Context, req gateway.ReplaceGigPackagesRequest) (*gateway.Gig, error)
+	ReplaceQuestions(ctx context.Context, req gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error)
+	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
+	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
+	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
+}
+
+// GigPublisher is the outbound boundary used to manage gig drafts in another
+// service.
+type GigPublisher interface {
+	CreateDraft(ctx context.Context, req gateway.CreateGigDraftRequest) (*gateway.Gig, error)
+	UpdateBasicInfo(ctx context.Context, req gateway.UpdateGigBasicInfoRequest) (*gateway.Gig, error)
+	ReplacePackages(ctx context.Context, req gateway.ReplaceGigPackagesRequest) (*gateway.Gig, error)
+	ReplaceQuestions(ctx context.Context, req gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error)
+	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
+	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
+	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 }
 
 // Logger aliases the shared structured logger used by the application layer.

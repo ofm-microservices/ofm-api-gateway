@@ -9,6 +9,31 @@ var (
 	ErrInvalidSessionID             = errors.New("invalid session id")
 	ErrInvalidClientID              = errors.New("invalid client id")
 	ErrInvalidVerificationCode      = errors.New("invalid verification code")
+	ErrInvalidGigID                 = errors.New("invalid gig id")
+	ErrInvalidFreelancerID          = errors.New("invalid freelancer id")
+	ErrInvalidTitle                 = errors.New("invalid title")
+	ErrInvalidDescription           = errors.New("invalid description")
+	ErrInvalidCategoryID            = errors.New("invalid category id")
+	ErrInvalidCurrency              = errors.New("invalid currency")
+	ErrInvalidPackageTier           = errors.New("invalid package tier")
+	ErrInvalidPackageDescription    = errors.New("invalid package description")
+	ErrInvalidPackageDeliveryDays   = errors.New("invalid package delivery days")
+	ErrInvalidPackagePriceCents     = errors.New("invalid package price cents")
+	ErrInvalidQuestionContent       = errors.New("invalid question content")
+	ErrInvalidMediaUpload           = errors.New("invalid media upload")
+	ErrInvalidMediaRef              = ErrInvalidMediaUpload
+	ErrInvalidPackageCount          = errors.New("invalid package count")
+	ErrInvalidGigState              = errors.New("invalid gig state")
+	ErrGigNotFound                  = errors.New("gig not found")
+	ErrGigDraftIncomplete           = errors.New("gig draft is incomplete")
+	ErrGigAlreadyPublished          = errors.New("gig already published")
+	ErrFailedToCreateGig            = errors.New("failed to create gig")
+	ErrFailedToUpdateGig            = errors.New("failed to update gig")
+	ErrFailedToPublishGig           = errors.New("failed to publish gig")
+	ErrFailedToGetGig               = errors.New("failed to get gig")
+	ErrFailedToReplaceGigPackages   = errors.New("failed to replace gig packages")
+	ErrFailedToReplaceGigQuestions  = errors.New("failed to replace gig questions")
+	ErrFailedToReplaceGigMedia      = errors.New("failed to replace gig media")
 	ErrRegistrationNotCompleted     = errors.New("registration is not completed")
 	ErrRegistrationAlreadyClaimed   = errors.New("registration tokens already claimed")
 	ErrFailedToStartRegistration    = errors.New("failed to start registration")
@@ -28,4 +53,15 @@ type RegistrationConflictError struct {
 // Error implements the error interface for registration conflict responses.
 func (e *RegistrationConflictError) Error() string {
 	return "registration conflict"
+}
+
+// GigConflictError reports that a gig operation conflicts with the current
+// draft state or ownership constraints.
+type GigConflictError struct {
+	State string
+}
+
+// Error implements the error interface for gig conflict responses.
+func (e *GigConflictError) Error() string {
+	return "gig conflict"
 }
