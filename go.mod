@@ -4,14 +4,14 @@ go 1.25.5
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
-	github.com/go-resty/resty/v2 v2.16.5
 	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.47.0
-	github.com/ofm-microseervices/ofm-common v0.0.0
+	github.com/ofm-microservices/ofm-common v0.0.0
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/testcontainers/testcontainers-go v0.39.0
+	github.com/valyala/fasthttp v1.52.0
 	go.uber.org/fx v1.24.0
 	go.uber.org/mock v0.6.0
 	google.golang.org/grpc v1.79.2
@@ -73,7 +73,6 @@ require (
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.52.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -94,10 +93,11 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/ofm-microseervices/ofm-common => ../ofm-common
+replace github.com/ofm-microservices/ofm-common => ../ofm-common

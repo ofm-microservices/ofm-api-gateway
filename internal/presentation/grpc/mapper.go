@@ -2,8 +2,8 @@ package grpc
 
 import (
 	gateway "api-gateway/internal/domain"
-	authv1 "github.com/ofm-microseervices/ofm-common/proto/auth/v1"
-	registrationv1 "github.com/ofm-microseervices/ofm-common/proto/registration/v1"
+	authv1 "github.com/ofm-microservices/ofm-common/proto/auth/v1"
+	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

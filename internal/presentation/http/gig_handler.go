@@ -3,7 +3,7 @@ package http
 import (
 	gateway "api-gateway/internal/domain"
 	"errors"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	"io"
 	"mime/multipart"
 

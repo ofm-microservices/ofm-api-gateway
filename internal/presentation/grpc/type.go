@@ -4,10 +4,10 @@ import (
 	"api-gateway/config"
 	gateway "api-gateway/internal/domain"
 	"context"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
-	authv1 "github.com/ofm-microseervices/ofm-common/proto/auth/v1"
-	gigv1 "github.com/ofm-microseervices/ofm-common/proto/gig/v1"
-	registrationv1 "github.com/ofm-microseervices/ofm-common/proto/registration/v1"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	authv1 "github.com/ofm-microservices/ofm-common/proto/auth/v1"
+	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
+	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 )
 
 // Logger aliases the shared logger contract used by the gRPC adapter.

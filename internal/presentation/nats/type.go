@@ -3,7 +3,7 @@ package nats
 import (
 	gateway "api-gateway/internal/domain"
 	"context"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
 )
 
 // Logger aliases the shared logger contract used by the NATS adapter.

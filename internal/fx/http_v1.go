@@ -4,7 +4,7 @@ import (
 	"api-gateway/config"
 	service "api-gateway/internal/application"
 	httpserver "api-gateway/internal/presentation/http"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
 
 	"go.uber.org/fx"
 )

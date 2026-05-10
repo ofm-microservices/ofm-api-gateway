@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
 )
 
 var (

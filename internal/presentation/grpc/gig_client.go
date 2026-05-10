@@ -4,8 +4,8 @@ import (
 	gateway "api-gateway/internal/domain"
 	"context"
 
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
-	gigv1 "github.com/ofm-microseervices/ofm-common/proto/gig/v1"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
 	grpcpkg "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

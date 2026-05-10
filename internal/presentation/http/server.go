@@ -4,7 +4,7 @@ import (
 	"api-gateway/config"
 	"context"
 	"fmt"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -5,7 +5,7 @@ import (
 	service "api-gateway/internal/application"
 	registrationgrpc "api-gateway/internal/presentation/grpc"
 	"context"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
 
 	"go.uber.org/fx"
 )
