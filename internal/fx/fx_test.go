@@ -215,7 +215,7 @@ var _ = Describe("FX providers", func() {
 			App:              config.AppConfig{Env: "test", LogLevel: "debug"},
 			HTTP:             config.HTTPConfig{Host: "127.0.0.1", Port: 8080},
 			JWT:              config.JWTConfig{Secret: "local-dev-secret-change-me"},
-			RegistrationSaga: config.RegistrationSagaConfig{Address: "127.0.0.1:9090"},
+			RegistrationSaga: config.RegistrationSagaConfig{Address: "127.0.0.1:9500"},
 		}
 	})
 

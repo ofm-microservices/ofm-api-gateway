@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
 	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
 	grpcpkg "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -27,7 +28,7 @@ func NewGigClient(cfg GigServiceConfig, log Logger) (GigClient, error) {
 		return nil, ErrNilLogger
 	}
 
-	conn, err := grpcpkg.NewClient(cfg.Address, grpcpkg.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpcpkg.NewClient(cfg.Address, grpcpkg.WithTransportCredentials(insecure.NewCredentials()), grpcpkg.WithUnaryInterceptor(metrics.UnaryClientInterceptor()))
 	if err != nil {
 		return nil, err
 	}

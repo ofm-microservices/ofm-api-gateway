@@ -51,18 +51,18 @@ var _ = Describe("Load", func() {
 		Expect(cfg.HTTP.Host).To(Equal("0.0.0.0"))
 		Expect(cfg.HTTP.Port).To(Equal(8080))
 		Expect(cfg.JWT.Secret).To(Equal("local-dev-secret-change-me"))
-		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:9090"))
-		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:9093"))
+		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:9500"))
+		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:9503"))
 	})
 
 	It("loads explicit environment overrides", func() {
 		Expect(os.Setenv("APP_ENV", "test")).To(Succeed())
 		Expect(os.Setenv("LOG_LEVEL", "debug")).To(Succeed())
 		Expect(os.Setenv("HTTP_HOST", "127.0.0.1")).To(Succeed())
-		Expect(os.Setenv("HTTP_PORT", "9091")).To(Succeed())
+		Expect(os.Setenv("HTTP_PORT", "18080")).To(Succeed())
 		Expect(os.Setenv("JWT_SECRET", "test-secret")).To(Succeed())
-		Expect(os.Setenv("REGISTRATION_SAGA_ADDRESS", "127.0.0.1:9191")).To(Succeed())
-		Expect(os.Setenv("GIG_SERVICE_ADDRESS", "127.0.0.1:9292")).To(Succeed())
+		Expect(os.Setenv("REGISTRATION_SAGA_ADDRESS", "127.0.0.1:19500")).To(Succeed())
+		Expect(os.Setenv("GIG_SERVICE_ADDRESS", "127.0.0.1:19503")).To(Succeed())
 
 		cfg, err := Load()
 
@@ -70,10 +70,10 @@ var _ = Describe("Load", func() {
 		Expect(cfg.App.Env).To(Equal("test"))
 		Expect(cfg.App.LogLevel).To(Equal("debug"))
 		Expect(cfg.HTTP.Host).To(Equal("127.0.0.1"))
-		Expect(cfg.HTTP.Port).To(Equal(9091))
+		Expect(cfg.HTTP.Port).To(Equal(18080))
 		Expect(cfg.JWT.Secret).To(Equal("test-secret"))
-		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:9191"))
-		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:9292"))
+		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:19500"))
+		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:19503"))
 	})
 
 	It("wraps env parsing failures", func() {

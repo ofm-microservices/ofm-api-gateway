@@ -188,7 +188,7 @@ var _ = Describe("registration client", func() {
 		Expect(cl).To(BeNil())
 		Expect(err).To(MatchError(ErrEmptyAddress))
 
-		cl, err = NewClient(RegistrationSagaConfig{Address: "127.0.0.1:9090"}, nil)
+		cl, err = NewClient(RegistrationSagaConfig{Address: "127.0.0.1:9500"}, nil)
 		Expect(cl).To(BeNil())
 		Expect(err).To(MatchError(ErrNilLogger))
 	})

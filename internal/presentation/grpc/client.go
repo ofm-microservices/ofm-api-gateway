@@ -4,6 +4,7 @@ import (
 	gateway "api-gateway/internal/domain"
 	"context"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 
 	grpcpkg "google.golang.org/grpc"
@@ -30,6 +31,7 @@ func NewClient(cfg RegistrationSagaConfig, log Logger) (Client, error) {
 	conn, err := grpcpkg.NewClient(
 		cfg.Address,
 		grpcpkg.WithTransportCredentials(insecure.NewCredentials()),
+		grpcpkg.WithUnaryInterceptor(metrics.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		return nil, err

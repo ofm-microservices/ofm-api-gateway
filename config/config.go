@@ -9,6 +9,7 @@ import (
 type Config struct {
 	App              AppConfig
 	HTTP             HTTPConfig
+	Metrics          MetricsConfig
 	JWT              JWTConfig
 	RegistrationSaga RegistrationSagaConfig
 	AuthService      AuthServiceConfig
