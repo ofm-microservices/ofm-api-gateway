@@ -4,6 +4,7 @@ import (
 	gateway "api-gateway/internal/domain"
 	"errors"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -39,6 +40,8 @@ func (h *authHandler) RegisterRoutes(router fiber.Router) {
 
 // HandleSignUp parses the public signup payload and starts registration.
 func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
 	var req gateway.SignUpRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
@@ -49,7 +52,10 @@ func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
 		return h.MapSignUpError(c, err)
 	}
 
-	h.log.Info("sign up request accepted")
+	log.Info("sign up request accepted",
+		logging.Operation("http.auth.sign_up"),
+		logging.DurationMS(time.Since(started)),
+	)
 
 	return c.Status(fiber.StatusAccepted).JSON(result)
 }
@@ -57,6 +63,7 @@ func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
 // HandleVerifyEmail accepts an email verification code and returns immediately
 // after the saga accepts the command.
 func (h *authHandler) HandleVerifyEmail(c *fiber.Ctx) error {
+	started := time.Now()
 	var req gateway.VerifyEmailRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
@@ -67,12 +74,17 @@ func (h *authHandler) HandleVerifyEmail(c *fiber.Ctx) error {
 		return h.MapSignUpError(c, err)
 	}
 
+	logging.WithContext(c.UserContext(), h.log).Info("verify email request accepted",
+		logging.Operation("http.auth.verify_email"),
+		logging.DurationMS(time.Since(started)),
+	)
 	return c.Status(fiber.StatusAccepted).JSON(result)
 }
 
 // HandleCompleteRegistration exchanges a completed registration saga for
 // auth-owned tokens.
 func (h *authHandler) HandleCompleteRegistration(c *fiber.Ctx) error {
+	started := time.Now()
 	var req gateway.CompleteRegistrationRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
@@ -83,11 +95,16 @@ func (h *authHandler) HandleCompleteRegistration(c *fiber.Ctx) error {
 		return h.MapSignUpError(c, err)
 	}
 
+	logging.WithContext(c.UserContext(), h.log).Info("complete registration request accepted",
+		logging.Operation("http.auth.complete_registration"),
+		logging.DurationMS(time.Since(started)),
+	)
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
 // MapSignUpError translates signup failures into stable HTTP responses.
 func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
+	log := logging.WithContext(c.UserContext(), h.log)
 	var conflictErr *gateway.RegistrationConflictError
 
 	switch err {
@@ -116,7 +133,12 @@ func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
 				"email_taken":    conflictErr.EmailTaken,
 			})
 		}
-		h.log.Error("request failed", logging.Err(err))
+		log.Error("request failed",
+			logging.Operation("http.auth.signup_error"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
 	}
 }

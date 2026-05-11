@@ -24,6 +24,7 @@ func NewServer(cfg config.HTTPConfig, log logging.Logger) (Server, error) {
 	}
 
 	app := fiber.New()
+	app.Use(tracingMiddleware())
 	app.Use(metricsMiddleware)
 	srv := &server{
 		app: app,
