@@ -7,6 +7,7 @@ import (
 	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 
+	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	grpcpkg "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -31,6 +32,7 @@ func NewClient(cfg RegistrationSagaConfig, log Logger) (Client, error) {
 	conn, err := grpcpkg.NewClient(
 		cfg.Address,
 		grpcpkg.WithTransportCredentials(insecure.NewCredentials()),
+		grpcpkg.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpcpkg.WithUnaryInterceptor(metrics.UnaryClientInterceptor()),
 	)
 	if err != nil {

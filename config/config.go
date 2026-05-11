@@ -10,6 +10,7 @@ type Config struct {
 	App              AppConfig
 	HTTP             HTTPConfig
 	Metrics          MetricsConfig
+	Tracing          TracingConfig
 	JWT              JWTConfig
 	RegistrationSaga RegistrationSagaConfig
 	AuthService      AuthServiceConfig

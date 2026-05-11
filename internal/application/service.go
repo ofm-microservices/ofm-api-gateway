@@ -6,6 +6,7 @@ import (
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	"net/mail"
 	"strings"
+	"time"
 )
 
 type registrationService struct {
@@ -35,7 +36,13 @@ func New(client RegistrationPublisher, tokens TokenIssuer, log Logger) (Registra
 }
 
 func (s *registrationService) SignUp(ctx context.Context, req gateway.SignUpRequest) (*gateway.SignUpResult, error) {
-	s.log.Info("sign up request received", logging.String("email", req.Email), logging.String("username", req.Username))
+	started := time.Now()
+	log := logging.WithContext(ctx, s.log)
+	log.Info("sign up request received",
+		logging.Operation("registration.sign_up"),
+		logging.String("email", req.Email),
+		logging.String("username", req.Username),
+	)
 
 	if _, err := mail.ParseAddress(strings.TrimSpace(req.Email)); err != nil {
 		return nil, gateway.ErrInvalidEmail
@@ -56,7 +63,14 @@ func (s *registrationService) SignUp(ctx context.Context, req gateway.SignUpRequ
 		Surname:   strings.TrimSpace(req.Surname),
 	})
 	if err != nil {
-		s.log.Error("failed to start registration", logging.String("email", req.Email), logging.Err(err))
+		log.Error("failed to start registration",
+			logging.Operation("registration.sign_up"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.DurationMS(time.Since(started)),
+			logging.String("email", req.Email),
+			logging.Err(err),
+		)
 		return nil, err
 	}
 	if result.Status == "conflict" {
@@ -67,11 +81,17 @@ func (s *registrationService) SignUp(ctx context.Context, req gateway.SignUpRequ
 		}
 	}
 
-	s.log.Info("registration started", logging.String("email", req.Email), logging.String("session_id", result.SessionID))
+	log.Info("registration started",
+		logging.Operation("registration.sign_up"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("email", req.Email),
+		logging.String("session_id", result.SessionID),
+	)
 	return result, nil
 }
 
 func (s *registrationService) VerifyEmail(ctx context.Context, req gateway.VerifyEmailRequest) (*gateway.VerifyEmailResult, error) {
+	log := logging.WithContext(ctx, s.log)
 	sessionID := strings.TrimSpace(req.SessionID)
 	clientID := strings.TrimSpace(req.ClientID)
 	code := strings.TrimSpace(req.Code)
@@ -91,7 +111,13 @@ func (s *registrationService) VerifyEmail(ctx context.Context, req gateway.Verif
 		Code:      code,
 	})
 	if err != nil {
-		s.log.Error("failed to verify registration email", logging.String("session_id", sessionID), logging.Err(err))
+		log.Error("failed to verify registration email",
+			logging.Operation("registration.verify_email"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("session_id", sessionID),
+			logging.Err(err),
+		)
 		return nil, err
 	}
 
@@ -99,6 +125,7 @@ func (s *registrationService) VerifyEmail(ctx context.Context, req gateway.Verif
 }
 
 func (s *registrationService) CompleteRegistration(ctx context.Context, req gateway.CompleteRegistrationRequest) (*gateway.CompleteRegistrationResult, error) {
+	log := logging.WithContext(ctx, s.log)
 	sessionID := strings.TrimSpace(req.SessionID)
 	clientID := strings.TrimSpace(req.ClientID)
 	if sessionID == "" {
@@ -110,7 +137,13 @@ func (s *registrationService) CompleteRegistration(ctx context.Context, req gate
 
 	status, err := s.client.GetRegistrationStatus(ctx, sessionID, clientID)
 	if err != nil {
-		s.log.Error("failed to get registration status", logging.String("session_id", sessionID), logging.Err(err))
+		log.Error("failed to get registration status",
+			logging.Operation("registration.status"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("session_id", sessionID),
+			logging.Err(err),
+		)
 		return nil, err
 	}
 	if status.Status == "tokens_claimed" {
@@ -122,7 +155,13 @@ func (s *registrationService) CompleteRegistration(ctx context.Context, req gate
 
 	result, err := s.tokens.IssueRegistrationTokens(ctx, status.UserID)
 	if err != nil {
-		s.log.Error("failed to issue registration tokens", logging.String("user_id", status.UserID), logging.Err(err))
+		log.Error("failed to issue registration tokens",
+			logging.Operation("registration.issue_tokens"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("user_id", status.UserID),
+			logging.Err(err),
+		)
 		return nil, err
 	}
 
