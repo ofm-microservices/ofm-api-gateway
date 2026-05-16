@@ -59,5 +59,29 @@ type GigPublisher interface {
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 }
 
+// OrderPublisher is the outbound boundary used to start order sagas in the
+// order-saga service.
+type OrderPublisher interface {
+	StartOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error)
+}
+
+// OrderService validates public create-order requests and delegates to the
+// saga boundary.
+type OrderService interface {
+	CreateOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error)
+}
+
+// PaymentOnboardingService validates public freelancer onboarding requests and
+// delegates to payment-service.
+type PaymentOnboardingService interface {
+	StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error)
+}
+
+// PaymentOnboardingPublisher is the outbound boundary used to start
+// freelancer onboarding in payment-service.
+type PaymentOnboardingPublisher interface {
+	StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error)
+}
+
 // Logger aliases the shared structured logger used by the application layer.
 type Logger = logging.Logger

@@ -1,15 +1,11 @@
 package http
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
+	commonjwt "github.com/ofm-microservices/ofm-common/pkg/jwt"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 )
 
@@ -22,10 +18,11 @@ var (
 )
 
 const jwtPrincipalLocalKey = "jwt.freelancer_id"
+const jwtClaimsLocalKey = "jwt.claims"
 
 type jwtPrincipalResolver struct {
-	secret []byte
-	log    logging.Logger
+	verifier commonjwt.Verifier
+	log      logging.Logger
 }
 
 func newJWTPrincipalResolver(secret string, log logging.Logger) (*jwtPrincipalResolver, error) {
@@ -35,22 +32,27 @@ func newJWTPrincipalResolver(secret string, log logging.Logger) (*jwtPrincipalRe
 	if log == nil {
 		return nil, ErrNilLogger
 	}
+	verifier, err := commonjwt.NewVerifier(commonjwt.Config{Secret: secret})
+	if err != nil {
+		return nil, err
+	}
 
 	return &jwtPrincipalResolver{
-		secret: []byte(secret),
-		log:    log.With(logging.String("module", "jwt-principal-resolver")),
+		verifier: verifier,
+		log:      log.With(logging.String("module", "jwt-principal-resolver")),
 	}, nil
 }
 
 func (r *jwtPrincipalResolver) Middleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		freelancerID, err := r.extractFreelancerID(c.Get("Authorization"))
+		claims, err := r.extractClaims(c.Get("Authorization"))
 		if err != nil {
 			r.log.Error("jwt authorization failed", logging.Err(err))
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 		}
 
-		c.Locals(jwtPrincipalLocalKey, freelancerID)
+		c.Locals(jwtPrincipalLocalKey, strings.TrimSpace(claims.Subject))
+		c.Locals(jwtClaimsLocalKey, claims)
 		return c.Next()
 	}
 }
@@ -64,59 +66,54 @@ func (r *jwtPrincipalResolver) FreelancerID(c *fiber.Ctx) (string, error) {
 	return strings.TrimSpace(value), nil
 }
 
-func (r *jwtPrincipalResolver) extractFreelancerID(header string) (string, error) {
-	token, err := bearerToken(header)
+func (r *jwtPrincipalResolver) extractClaims(header string) (*commonjwt.Claims, error) {
+	token, err := commonjwt.ParseBearer(header)
+	if err != nil {
+		switch {
+		case errors.Is(err, commonjwt.ErrInvalidAuthorizationHeader):
+			return nil, errInvalidAuthorizationHeader
+		default:
+			return nil, errInvalidJWTToken
+		}
+	}
+	claims, err := r.verifier.Validate(token)
+	if err != nil {
+		switch {
+		case errors.Is(err, commonjwt.ErrExpiredToken):
+			return nil, errExpiredJWTToken
+		case errors.Is(err, commonjwt.ErrInvalidAuthorizationHeader):
+			return nil, errInvalidAuthorizationHeader
+		default:
+			return nil, errInvalidJWTToken
+		}
+	}
+	if strings.TrimSpace(claims.Subject) == "" {
+		return nil, errInvalidJWTToken
+	}
+	return claims, nil
+}
+
+func (r *jwtPrincipalResolver) Claims(c *fiber.Ctx) (*commonjwt.Claims, error) {
+	value, ok := c.Locals(jwtClaimsLocalKey).(*commonjwt.Claims)
+	if !ok || value == nil {
+		return nil, errMissingJWTPrincipal
+	}
+	return value, nil
+}
+
+func (r *jwtPrincipalResolver) Email(c *fiber.Ctx) (string, error) {
+	claims, err := r.Claims(c)
 	if err != nil {
 		return "", err
 	}
-
-	headerPart, payloadPart, signaturePart, err := splitJWT(token)
-	if err != nil {
-		return "", err
+	if strings.TrimSpace(claims.Email) == "" {
+		return "", errMissingJWTPrincipal
 	}
-
-	signed := headerPart + "." + payloadPart
-	expected := hmac.New(sha256.New, r.secret)
-	if _, err := expected.Write([]byte(signed)); err != nil {
-		return "", errInvalidJWTToken
-	}
-
-	signature, err := base64.RawURLEncoding.DecodeString(signaturePart)
-	if err != nil {
-		return "", errInvalidJWTToken
-	}
-	if !hmac.Equal(signature, expected.Sum(nil)) {
-		return "", errInvalidJWTToken
-	}
-
-	var claims map[string]any
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(payloadPart)
-	if err != nil {
-		return "", errInvalidJWTToken
-	}
-	if err := json.Unmarshal(payloadBytes, &claims); err != nil {
-		return "", errInvalidJWTToken
-	}
-
-	if exp, ok := claims["exp"].(float64); ok && time.Now().UTC().After(time.Unix(int64(exp), 0)) {
-		return "", errExpiredJWTToken
-	}
-
-	sub, _ := claims["sub"].(string)
-	if strings.TrimSpace(sub) == "" {
-		return "", errInvalidJWTToken
-	}
-
-	return strings.TrimSpace(sub), nil
+	return strings.TrimSpace(claims.Email), nil
 }
 
 func bearerToken(header string) (string, error) {
-	fields := strings.Fields(header)
-	if len(fields) != 2 || !strings.EqualFold(fields[0], "Bearer") {
-		return "", errInvalidAuthorizationHeader
-	}
-
-	return fields[1], nil
+	return commonjwt.ParseBearer(header)
 }
 
 func splitJWT(token string) (string, string, string, error) {
@@ -124,6 +121,5 @@ func splitJWT(token string) (string, string, string, error) {
 	if len(parts) != 3 {
 		return "", "", "", errInvalidJWTToken
 	}
-
 	return parts[0], parts[1], parts[2], nil
 }

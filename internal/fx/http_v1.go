@@ -13,6 +13,8 @@ import (
 var HTTPV1Module = fx.Options(
 	fx.Provide(ProvideHTTPV1AuthHandler),
 	fx.Provide(ProvideHTTPV1GigHandler),
+	fx.Provide(ProvideHTTPV1OrderHandler),
+	fx.Provide(ProvideHTTPV1OnboardingHandler),
 	fx.Invoke(InvokeRegisterHTTPV1Routes),
 )
 
@@ -33,9 +35,29 @@ func ProvideHTTPV1GigHandler(
 	return httpserver.NewGigHandler(service, cfg.JWT.Secret, lg)
 }
 
+// ProvideHTTPV1OrderHandler constructs the versioned order HTTP handler.
+func ProvideHTTPV1OrderHandler(
+	cfg *config.Config,
+	service httpserver.OrderService,
+	lg logging.Logger,
+) (httpserver.OrderHandler, error) {
+	return httpserver.NewOrderHandler(service, cfg.JWT.Secret, lg)
+}
+
+// ProvideHTTPV1OnboardingHandler constructs the freelancer onboarding handler.
+func ProvideHTTPV1OnboardingHandler(
+	cfg *config.Config,
+	service httpserver.PaymentOnboardingService,
+	lg logging.Logger,
+) (httpserver.OnboardingHandler, error) {
+	return httpserver.NewOnboardingHandler(service, cfg.JWT.Secret, lg)
+}
+
 // InvokeRegisterHTTPV1Routes registers versioned HTTP routes on the server.
-func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, gigHandler httpserver.GigHandler) {
+func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, onboardingHandler httpserver.OnboardingHandler) {
 	v1 := srv.App().Group("/v1")
 	authHandler.RegisterRoutes(v1)
 	gigHandler.RegisterRoutes(v1)
+	orderHandler.RegisterRoutes(v1)
+	onboardingHandler.RegisterRoutes(v1)
 }
