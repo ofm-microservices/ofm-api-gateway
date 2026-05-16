@@ -125,6 +125,19 @@ func (h *orderHandlerStub) RegisterRoutes(router fiber.Router) {
 
 func (h *orderHandlerStub) HandleCreateOrder(*fiber.Ctx) error { return nil }
 
+type onboardingHandlerStub struct {
+	registered bool
+}
+
+func (h *onboardingHandlerStub) RegisterRoutes(router fiber.Router) {
+	h.registered = true
+	router.Post("/freelancer/onboarding/start", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusAccepted)
+	})
+}
+
+func (h *onboardingHandlerStub) HandleStartFreelancerOnboarding(*fiber.Ctx) error { return nil }
+
 type gigPublisherStub struct{}
 
 func (gigPublisherStub) CreateDraft(context.Context, gateway.CreateGigDraftRequest) (*gateway.Gig, error) {
@@ -329,11 +342,13 @@ var _ = Describe("FX providers", func() {
 		handler := &authHandlerStub{}
 		gigHandler := &gigHandlerStub{}
 		orderHandler := &orderHandlerStub{}
-		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler, orderHandler)
+		onboardingHandler := &onboardingHandlerStub{}
+		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler, orderHandler, onboardingHandler)
 
 		Expect(handler.registered).To(BeTrue())
 		Expect(gigHandler.registered).To(BeTrue())
 		Expect(orderHandler.registered).To(BeTrue())
+		Expect(onboardingHandler.registered).To(BeTrue())
 	})
 
 	It("wires HTTP server lifecycle hooks", func() {

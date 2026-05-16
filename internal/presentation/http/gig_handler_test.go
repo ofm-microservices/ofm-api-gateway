@@ -218,6 +218,11 @@ var _ = Describe("GigHandler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(fiber.StatusPreconditionFailed))
 
+		service.err = gateway.ErrConnectOnboardingIncomplete
+		resp, err = app.Test(gigJSONRequest("POST", "/v1/gigs/gig-1/publish", "", signedJWT("freelancer-1", testJWTSecret)), -1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(fiber.StatusPreconditionFailed))
+
 		service.err = gateway.ErrInvalidGigState
 		resp, err = app.Test(gigJSONRequest("GET", "/v1/gigs/gig-1/draft", "", signedJWT("freelancer-1", testJWTSecret)), -1)
 		Expect(err).NotTo(HaveOccurred())

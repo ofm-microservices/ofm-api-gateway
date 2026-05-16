@@ -162,6 +162,8 @@ func (m *gigMapper) ToError(err error) error {
 		return gateway.ErrGigDraftIncomplete
 	case gateway.ErrGigAlreadyPublished.Error():
 		return gateway.ErrGigAlreadyPublished
+	case gateway.ErrConnectOnboardingIncomplete.Error():
+		return gateway.ErrConnectOnboardingIncomplete
 	case gateway.ErrInvalidGigState.Error():
 		return gateway.ErrInvalidGigState
 	default:
