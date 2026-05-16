@@ -7,6 +7,7 @@ import (
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	authv1 "github.com/ofm-microservices/ofm-common/proto/auth/v1"
 	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
+	paymentconnectv1 "github.com/ofm-microservices/ofm-common/proto/paymentconnect/v1"
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 )
 
@@ -55,6 +56,13 @@ type GigClient interface {
 	Close() error
 }
 
+// PaymentOnboardingClient is the gateway-facing gRPC adapter for freelancer
+// Stripe onboarding.
+type PaymentOnboardingClient interface {
+	StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error)
+	Close() error
+}
+
 // RegistrationMapper translates between gateway-domain signup types and the
 // shared registration gRPC contract.
 type RegistrationMapper interface {
@@ -88,6 +96,14 @@ type GigMapper interface {
 	ToError(err error) error
 }
 
+// PaymentOnboardingMapper translates between gateway onboarding types and the
+// shared payment onboarding gRPC contract.
+type PaymentOnboardingMapper interface {
+	ToStartFreelancerOnboardingRequest(req gateway.StartFreelancerOnboardingRequest) *paymentconnectv1.StartFreelancerOnboardingRequest
+	ToStartFreelancerOnboardingResponse(res *paymentconnectv1.StartFreelancerOnboardingResponse) *gateway.StartFreelancerOnboardingResult
+	ToError(err error) error
+}
+
 // RegistrationSagaConfig aliases the outbound saga gRPC client configuration.
 type RegistrationSagaConfig = config.RegistrationSagaConfig
 
@@ -96,3 +112,6 @@ type AuthServiceConfig = config.AuthServiceConfig
 
 // GigServiceConfig aliases the outbound gig gRPC client configuration.
 type GigServiceConfig = config.GigServiceConfig
+
+// PaymentServiceConfig aliases the outbound payment gRPC client configuration.
+type PaymentServiceConfig = config.PaymentServiceConfig

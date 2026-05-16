@@ -3,6 +3,7 @@ package service
 import (
 	gateway "api-gateway/internal/domain"
 	"context"
+	"github.com/google/uuid"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	"net/mail"
 	"strings"
@@ -12,6 +13,16 @@ import (
 type registrationService struct {
 	client RegistrationPublisher
 	tokens TokenIssuer
+	log    Logger
+}
+
+type orderService struct {
+	client OrderPublisher
+	log    Logger
+}
+
+type onboardingService struct {
+	client PaymentOnboardingPublisher
 	log    Logger
 }
 
@@ -32,6 +43,38 @@ func New(client RegistrationPublisher, tokens TokenIssuer, log Logger) (Registra
 		client: client,
 		tokens: tokens,
 		log:    log.With(logging.String("module", "application")),
+	}, nil
+}
+
+// NewOrder constructs the application service responsible for starting order
+// sagas through the NATS boundary.
+func NewOrder(client OrderPublisher, log Logger) (OrderService, error) {
+	if client == nil {
+		return nil, ErrNilOrderClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &orderService{
+		client: client,
+		log:    log.With(logging.String("module", "order-application")),
+	}, nil
+}
+
+// NewPaymentOnboarding constructs the service responsible for starting Stripe
+// Connect onboarding through payment-service.
+func NewPaymentOnboarding(client PaymentOnboardingPublisher, log Logger) (PaymentOnboardingService, error) {
+	if client == nil {
+		return nil, ErrNilPaymentOnboardingClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &onboardingService{
+		client: client,
+		log:    log.With(logging.String("module", "onboarding-application")),
 	}, nil
 }
 
@@ -166,4 +209,118 @@ func (s *registrationService) CompleteRegistration(ctx context.Context, req gate
 	}
 
 	return result, nil
+}
+
+func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	buyerID := strings.TrimSpace(req.BuyerID)
+	if buyerID == "" {
+		return nil, gateway.ErrInvalidOrderBuyerID
+	}
+	buyerEmail := strings.TrimSpace(req.BuyerEmail)
+	if _, err := mail.ParseAddress(buyerEmail); err != nil {
+		return nil, gateway.ErrInvalidOrderBuyerEmail
+	}
+	connectionID := strings.TrimSpace(req.RealtimeConnectionID)
+	if connectionID != "" && !validRealtimeConnectionID(connectionID) {
+		return nil, gateway.ErrInvalidOrderConnectionID
+	}
+	gigID := strings.TrimSpace(req.GigID)
+	if gigID == "" {
+		return nil, gateway.ErrInvalidOrderGigID
+	}
+	gigTitle := strings.TrimSpace(req.GigTitle)
+	if gigTitle == "" {
+		return nil, gateway.ErrInvalidOrderTitle
+	}
+	packageID := strings.TrimSpace(req.PackageID)
+	if packageID == "" {
+		return nil, gateway.ErrInvalidOrderPackage
+	}
+	packageTier := strings.TrimSpace(req.PackageTier)
+	packageDescription := strings.TrimSpace(req.PackageDescription)
+	if packageTier == "" || packageDescription == "" {
+		return nil, gateway.ErrInvalidOrderPackage
+	}
+	if req.PackageDeliveryDays <= 0 {
+		return nil, gateway.ErrInvalidPackageDeliveryDays
+	}
+	if req.PriceCents <= 0 {
+		return nil, gateway.ErrInvalidOrderPrice
+	}
+	currency := strings.TrimSpace(req.Currency)
+	if currency == "" {
+		return nil, gateway.ErrInvalidOrderCurrency
+	}
+
+	result, err := s.client.StartOrder(ctx, gateway.CreateOrderRequest{
+		SagaID:               uuid.NewString(),
+		OrderID:              uuid.NewString(),
+		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
+		IdempotencyKey:       uuid.NewString(),
+		BuyerID:              buyerID,
+		BuyerEmail:           buyerEmail,
+		RealtimeConnectionID: connectionID,
+		GigID:                gigID,
+		GigTitle:             gigTitle,
+		PackageID:            packageID,
+		PackageTier:          packageTier,
+		PackageDescription:   packageDescription,
+		PackageDeliveryDays:  req.PackageDeliveryDays,
+		PriceCents:           req.PriceCents,
+		Currency:             currency,
+	})
+	if err != nil {
+		log.Error("failed to start order",
+			logging.Operation("order.create"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("buyer_id", buyerID),
+			logging.String("gig_id", gigID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	if result == nil {
+		result = &gateway.CreateOrderResult{}
+	}
+	if strings.TrimSpace(result.SagaID) == "" {
+		result.SagaID = req.SagaID
+	}
+	if strings.TrimSpace(result.OrderID) == "" {
+		result.OrderID = req.OrderID
+	}
+	if strings.TrimSpace(result.Status) == "" {
+		result.Status = "pending"
+	}
+	return result, nil
+}
+
+func (s *onboardingService) StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	userID := strings.TrimSpace(req.UserID)
+	if userID == "" {
+		return nil, gateway.ErrInvalidFreelancerOnboarding
+	}
+
+	result, err := s.client.StartFreelancerOnboarding(ctx, gateway.StartFreelancerOnboardingRequest{
+		UserID:  userID,
+		Country: strings.TrimSpace(req.Country),
+	})
+	if err != nil {
+		log.Error("failed to start freelancer onboarding",
+			logging.Operation("payment.onboarding.start"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("user_id", userID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	return result, nil
+}
+
+func validRealtimeConnectionID(id string) bool {
+	parts := strings.Split(strings.TrimSpace(id), ".")
+	return len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && strings.TrimSpace(parts[1]) != ""
 }

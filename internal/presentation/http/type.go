@@ -24,10 +24,15 @@ type AuthHandler interface {
 // HTTP layer.
 type GigService = service.GigService
 
+// OrderService aliases the application order orchestration contract used by
+// the HTTP layer.
+type OrderService = service.OrderService
+
 // GigPrincipalResolver validates bearer tokens and extracts the gig owner id.
 type GigPrincipalResolver interface {
 	Middleware() fiber.Handler
 	FreelancerID(c *fiber.Ctx) (string, error)
+	Email(c *fiber.Ctx) (string, error)
 }
 
 // GigHandler exposes the gig draft HTTP routes owned by api-gateway.
@@ -40,6 +45,21 @@ type GigHandler interface {
 	HandleReplaceMedia(c *fiber.Ctx) error
 	HandleGetDraft(c *fiber.Ctx) error
 	HandlePublish(c *fiber.Ctx) error
+}
+
+// OrderHandler exposes the create-order HTTP route owned by api-gateway.
+type OrderHandler interface {
+	RegisterRoutes(router fiber.Router)
+	HandleCreateOrder(c *fiber.Ctx) error
+}
+
+// PaymentOnboardingService aliases the onboarding application boundary.
+type PaymentOnboardingService = service.PaymentOnboardingService
+
+// OnboardingHandler exposes the freelancer onboarding HTTP route group.
+type OnboardingHandler interface {
+	RegisterRoutes(router fiber.Router)
+	HandleStartFreelancerOnboarding(c *fiber.Ctx) error
 }
 
 // GigDraftRequest aliases the public draft request payload.

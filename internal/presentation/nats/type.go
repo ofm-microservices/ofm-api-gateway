@@ -17,3 +17,12 @@ type Publisher interface {
 	StartRegistration(ctx context.Context, event RegistrationRequested) (*gateway.SignUpResult, error)
 	Close()
 }
+
+// OrderRequest aliases the public order start payload published to NATS.
+type OrderRequest = gateway.CreateOrderRequest
+
+// OrderPublisher starts the order saga by publishing the order start command.
+type OrderPublisher interface {
+	StartOrder(ctx context.Context, event OrderRequest) (*gateway.CreateOrderResult, error)
+	Close()
+}

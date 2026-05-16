@@ -12,9 +12,11 @@ type Config struct {
 	Metrics          MetricsConfig
 	Tracing          TracingConfig
 	JWT              JWTConfig
+	NATS             NATSConfig
 	RegistrationSaga RegistrationSagaConfig
 	AuthService      AuthServiceConfig
 	GigService       GigServiceConfig
+	PaymentService   PaymentServiceConfig
 }
 
 // Load reads environment variables into Config and applies defaults.
