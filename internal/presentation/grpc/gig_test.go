@@ -154,6 +154,7 @@ var _ = Describe("GigMapper", func() {
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, gateway.ErrInvalidPackageCount.Error()))).To(MatchError(gateway.ErrInvalidPackageCount))
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, gateway.ErrGigDraftIncomplete.Error()))).To(MatchError(gateway.ErrGigDraftIncomplete))
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, gateway.ErrGigAlreadyPublished.Error()))).To(MatchError(gateway.ErrGigAlreadyPublished))
+		Expect(mapr.ToError(status.Error(codes.FailedPrecondition, gateway.ErrConnectOnboardingIncomplete.Error()))).To(MatchError(gateway.ErrConnectOnboardingIncomplete))
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, gateway.ErrInvalidGigState.Error()))).To(MatchError(gateway.ErrInvalidGigState))
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, "other"))).To(MatchError(gateway.ErrFailedToUpdateGig))
 	})

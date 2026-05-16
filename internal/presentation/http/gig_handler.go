@@ -217,6 +217,7 @@ func (h *gigHandler) mapGigError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrGigDraftIncomplete),
 		errors.Is(err, gateway.ErrGigAlreadyPublished),
+		errors.Is(err, gateway.ErrConnectOnboardingIncomplete),
 		errors.Is(err, gateway.ErrInvalidGigState):
 		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{"error": err.Error()})
 	default:

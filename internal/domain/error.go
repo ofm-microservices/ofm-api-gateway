@@ -36,6 +36,7 @@ var (
 	ErrGigNotFound                  = errors.New("gig not found")
 	ErrGigDraftIncomplete           = errors.New("gig draft is incomplete")
 	ErrGigAlreadyPublished          = errors.New("gig already published")
+	ErrConnectOnboardingIncomplete   = errors.New("connect onboarding incomplete")
 	ErrFailedToCreateGig            = errors.New("failed to create gig")
 	ErrFailedToUpdateGig            = errors.New("failed to update gig")
 	ErrFailedToPublishGig           = errors.New("failed to publish gig")

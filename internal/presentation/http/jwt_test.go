@@ -56,18 +56,18 @@ var _ = Describe("jwt principal resolver", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		token := signedJWT("freelancer-1", "secret")
-		id, err := resolver.extractFreelancerID("Bearer " + token)
+		claims, err := resolver.extractClaims("Bearer " + token)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(id).To(Equal("freelancer-1"))
+		Expect(claims.Subject).To(Equal("freelancer-1"))
 
-		_, err = resolver.extractFreelancerID("Bearer " + signedJWT("freelancer-1", "different"))
+		_, err = resolver.extractClaims("Bearer " + signedJWT("freelancer-1", "different"))
 		Expect(err).To(MatchError(errInvalidJWTToken))
 
 		expired := signedJWTWithExp("freelancer-1", "secret", time.Now().Add(-time.Hour))
-		_, err = resolver.extractFreelancerID("Bearer " + expired)
+		_, err = resolver.extractClaims("Bearer " + expired)
 		Expect(err).To(MatchError(errExpiredJWTToken))
 
-		_, err = resolver.extractFreelancerID("Bearer " + signedJWTWithoutSubject("secret"))
+		_, err = resolver.extractClaims("Bearer " + signedJWTWithoutSubject("secret"))
 		Expect(err).To(MatchError(errInvalidJWTToken))
 	})
 
