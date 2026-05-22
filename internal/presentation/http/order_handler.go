@@ -41,7 +41,8 @@ func NewOrderHandler(service OrderService, jwtSecret string, log logging.Logger)
 func (h *orderHandler) RegisterRoutes(router fiber.Router) {
 	orders := router.Group("/orders")
 	orders.Use(h.auth.Middleware())
-	orders.Post("", h.HandleCreateOrder)
+	orders.Post("/start", h.HandleCreateOrder)
+	orders.Post("/:order_id/confirm", h.HandleConfirmOrder)
 }
 
 // HandleCreateOrder validates and forwards the order start request.
@@ -73,7 +74,41 @@ func (h *orderHandler) HandleCreateOrder(c *fiber.Ctx) error {
 		logging.String("connection_id", req.RealtimeConnectionID),
 	)
 
-	return c.Status(fiber.StatusAccepted).JSON(result)
+	return c.Status(fiber.StatusCreated).JSON(result)
+}
+
+// HandleConfirmOrder validates and forwards the order confirmation request.
+func (h *orderHandler) HandleConfirmOrder(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	req := gateway.ConfirmOrderRequest{
+		OrderID: c.Params("order_id"),
+	}
+	buyerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	req.OrderID = c.Params("order_id")
+	req.BuyerID = buyerID
+	req.RealtimeConnectionID = strings.TrimSpace(firstNonEmpty(c.Get("X-Realtime-Connection-Id"), req.RealtimeConnectionID))
+
+	result, err := h.service.ConfirmOrder(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order confirm request accepted",
+		logging.Operation("http.order.confirm"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("connection_id", req.RealtimeConnectionID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
 }
 
 func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
@@ -88,6 +123,16 @@ func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
 		errors.Is(err, gateway.ErrInvalidOrderTitle),
 		errors.Is(err, gateway.ErrInvalidPackageDeliveryDays):
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrSelfOrderNotAllowed):
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrGigNotFound):
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrOrderNotConfirmable),
+		errors.Is(err, gateway.ErrOrderAlreadyPaymentPending),
+		errors.Is(err, gateway.ErrOrderAlreadyFunded):
+		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrOrderNotOwned):
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
 	default:
 		h.log.Error("request failed", logging.Err(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})

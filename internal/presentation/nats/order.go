@@ -77,5 +77,5 @@ func (p *orderPublisher) StartOrder(ctx context.Context, event gateway.CreateOrd
 		return nil, WrapFlushNATSError(err)
 	}
 
-	return &gateway.CreateOrderResult{Status: "pending"}, nil
+	return &gateway.CreateOrderResult{Status: "accepted"}, nil
 }

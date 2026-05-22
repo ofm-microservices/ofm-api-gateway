@@ -69,6 +69,10 @@ func (f *fakeGigCommandServiceClient) Publish(_ context.Context, req *gigv1.Publ
 	return f.publishRes, f.err
 }
 
+func (f *fakeGigCommandServiceClient) GetOrderStartSnapshot(_ context.Context, req *gigv1.GetOrderStartSnapshotRequest, _ ...grpc.CallOption) (*gigv1.GetOrderStartSnapshotResponse, error) {
+	return &gigv1.GetOrderStartSnapshotResponse{}, f.err
+}
+
 var _ = Describe("GigMapper", func() {
 	It("maps requests and responses", func() {
 		mapr := newGigMapper(logging.Logger(nil))

@@ -5,7 +5,6 @@ import (
 	service "api-gateway/internal/application"
 	paymentgrpc "api-gateway/internal/presentation/grpc"
 	registrationgrpc "api-gateway/internal/presentation/grpc"
-	natspub "api-gateway/internal/presentation/nats"
 	"context"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 
@@ -90,16 +89,16 @@ func ProvideGigPublisher(
 	return client, nil
 }
 
-// ProvideOrderPublisher constructs the order-saga publisher used by the public
-// order create endpoint.
+// ProvideOrderPublisher constructs the order-checkout gRPC client used by the
+// public order flow.
 func ProvideOrderPublisher(
 	lc fx.Lifecycle,
 	cfg *config.Config,
 	lg logging.Logger,
-) (service.OrderPublisher, error) {
-	client, err := natspub.NewOrderPublisher(cfg.NATS, lg)
+) (service.OrderCheckoutClient, error) {
+	client, err := paymentgrpc.NewOrderCheckoutClient(cfg.OrderSaga, lg)
 	if err != nil {
-		lg.Error("connect order saga nats failed", logging.Err(err))
+		lg.Error("connect order saga grpc failed", logging.Err(err))
 		return nil, err
 	}
 

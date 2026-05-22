@@ -240,7 +240,7 @@ var _ = Describe("FX providers", func() {
 		cfg = &config.Config{
 			App:              config.AppConfig{Env: "test", LogLevel: "debug"},
 			HTTP:             config.HTTPConfig{Host: "127.0.0.1", Port: 8080},
-			JWT:              config.JWTConfig{Secret: "local-dev-secret-change-me"},
+			JWT:              config.JWTConfig{AccessSecret: "local-dev-access-secret-change-me"},
 			RegistrationSaga: config.RegistrationSagaConfig{Address: "127.0.0.1:9500"},
 		}
 	})
@@ -251,11 +251,13 @@ var _ = Describe("FX providers", func() {
 		defer func() {
 			Expect(os.Chdir(prevWD)).To(Succeed())
 			Expect(os.Unsetenv("HTTP_PORT")).To(Succeed())
+			Expect(os.Unsetenv("PAYMENT_SERVICE_ADDRESS")).To(Succeed())
 		}()
 
 		tmpDir := GinkgoT().TempDir()
 		Expect(os.Chdir(tmpDir)).To(Succeed())
 		Expect(os.Setenv("HTTP_PORT", "9099")).To(Succeed())
+		Expect(os.Setenv("PAYMENT_SERVICE_ADDRESS", "127.0.0.1:9506")).To(Succeed())
 
 		loaded, err := ProvideConfig()
 
