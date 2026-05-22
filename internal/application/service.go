@@ -17,7 +17,7 @@ type registrationService struct {
 }
 
 type orderService struct {
-	client OrderPublisher
+	client OrderCheckoutClient
 	log    Logger
 }
 
@@ -46,9 +46,9 @@ func New(client RegistrationPublisher, tokens TokenIssuer, log Logger) (Registra
 	}, nil
 }
 
-// NewOrder constructs the application service responsible for starting order
-// sagas through the NATS boundary.
-func NewOrder(client OrderPublisher, log Logger) (OrderService, error) {
+// NewOrder constructs the application service responsible for order checkout
+// orchestration through the saga boundary.
+func NewOrder(client OrderCheckoutClient, log Logger) (OrderService, error) {
 	if client == nil {
 		return nil, ErrNilOrderClient
 	}
@@ -218,8 +218,13 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 		return nil, gateway.ErrInvalidOrderBuyerID
 	}
 	buyerEmail := strings.TrimSpace(req.BuyerEmail)
-	if _, err := mail.ParseAddress(buyerEmail); err != nil {
-		return nil, gateway.ErrInvalidOrderBuyerEmail
+	if buyerEmail != "" {
+		if _, err := mail.ParseAddress(buyerEmail); err != nil {
+			return nil, gateway.ErrInvalidOrderBuyerEmail
+		}
+	}
+	if buyerEmail == "" {
+		buyerEmail = ""
 	}
 	connectionID := strings.TrimSpace(req.RealtimeConnectionID)
 	if connectionID != "" && !validRealtimeConnectionID(connectionID) {
@@ -229,46 +234,19 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 	if gigID == "" {
 		return nil, gateway.ErrInvalidOrderGigID
 	}
-	gigTitle := strings.TrimSpace(req.GigTitle)
-	if gigTitle == "" {
-		return nil, gateway.ErrInvalidOrderTitle
-	}
 	packageID := strings.TrimSpace(req.PackageID)
 	if packageID == "" {
 		return nil, gateway.ErrInvalidOrderPackage
 	}
-	packageTier := strings.TrimSpace(req.PackageTier)
-	packageDescription := strings.TrimSpace(req.PackageDescription)
-	if packageTier == "" || packageDescription == "" {
-		return nil, gateway.ErrInvalidOrderPackage
-	}
-	if req.PackageDeliveryDays <= 0 {
-		return nil, gateway.ErrInvalidPackageDeliveryDays
-	}
-	if req.PriceCents <= 0 {
-		return nil, gateway.ErrInvalidOrderPrice
-	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		return nil, gateway.ErrInvalidOrderCurrency
-	}
 
 	result, err := s.client.StartOrder(ctx, gateway.CreateOrderRequest{
-		SagaID:               uuid.NewString(),
-		OrderID:              uuid.NewString(),
-		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
-		IdempotencyKey:       uuid.NewString(),
 		BuyerID:              buyerID,
 		BuyerEmail:           buyerEmail,
 		RealtimeConnectionID: connectionID,
 		GigID:                gigID,
-		GigTitle:             gigTitle,
 		PackageID:            packageID,
-		PackageTier:          packageTier,
-		PackageDescription:   packageDescription,
-		PackageDeliveryDays:  req.PackageDeliveryDays,
-		PriceCents:           req.PriceCents,
-		Currency:             currency,
+		IdempotencyKey:       uuid.NewString(),
+		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		log.Error("failed to start order",
@@ -285,15 +263,65 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 		result = &gateway.CreateOrderResult{}
 	}
 	if strings.TrimSpace(result.SagaID) == "" {
-		result.SagaID = req.SagaID
-	}
-	if strings.TrimSpace(result.OrderID) == "" {
-		result.OrderID = req.OrderID
+		result.SagaID = uuid.NewString()
 	}
 	if strings.TrimSpace(result.Status) == "" {
-		result.Status = "pending"
+		result.Status = "requirements_pending"
 	}
 	return result, nil
+}
+
+func (s *orderService) ConfirmOrder(ctx context.Context, req gateway.ConfirmOrderRequest) (*gateway.ConfirmOrderResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderGigID
+	}
+	connectionID := strings.TrimSpace(req.RealtimeConnectionID)
+	if connectionID != "" && !validRealtimeConnectionID(connectionID) {
+		return nil, gateway.ErrInvalidOrderConnectionID
+	}
+
+	result, err := s.client.ConfirmOrder(ctx, gateway.ConfirmOrderRequest{
+		OrderID:              orderID,
+		BuyerID:              strings.TrimSpace(req.BuyerID),
+		RealtimeConnectionID: connectionID,
+		IdempotencyKey:       strings.TrimSpace(req.IdempotencyKey),
+		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		log.Error("failed to confirm order",
+			logging.Operation("order.confirm"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("order_id", orderID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	if result == nil {
+		result = &gateway.ConfirmOrderResult{}
+	}
+	if strings.TrimSpace(result.Status) == "" {
+		result.Status = "payment_pending"
+	}
+	return result, nil
+}
+
+func (s *orderService) SubmitRequirements(ctx context.Context, req gateway.SubmitOrderRequirementsRequest) (*gateway.SubmitOrderRequirementsResult, error) {
+	return s.client.SubmitRequirements(ctx, req)
+}
+
+func (s *orderService) SubmitMessage(ctx context.Context, req gateway.SubmitOrderMessageRequest) (*gateway.SubmitOrderMessageResult, error) {
+	return s.client.SubmitMessage(ctx, req)
+}
+
+func (s *orderService) CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateOrderAttachmentUploadURLRequest) (*gateway.CreateOrderAttachmentUploadURLResult, error) {
+	return s.client.CreateAttachmentUploadURL(ctx, req)
+}
+
+func (s *orderService) CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteOrderAttachmentUploadRequest) (*gateway.CompleteOrderAttachmentUploadResult, error) {
+	return s.client.CompleteAttachmentUpload(ctx, req)
 }
 
 func (s *onboardingService) StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error) {

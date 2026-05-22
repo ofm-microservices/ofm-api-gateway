@@ -32,7 +32,7 @@ func ProvideHTTPV1GigHandler(
 	service httpserver.GigService,
 	lg logging.Logger,
 ) (httpserver.GigHandler, error) {
-	return httpserver.NewGigHandler(service, cfg.JWT.Secret, lg)
+	return httpserver.NewGigHandler(service, cfg.JWT.AccessSecret, lg)
 }
 
 // ProvideHTTPV1OrderHandler constructs the versioned order HTTP handler.
@@ -41,7 +41,7 @@ func ProvideHTTPV1OrderHandler(
 	service httpserver.OrderService,
 	lg logging.Logger,
 ) (httpserver.OrderHandler, error) {
-	return httpserver.NewOrderHandler(service, cfg.JWT.Secret, lg)
+	return httpserver.NewOrderHandler(service, cfg.JWT.AccessSecret, lg)
 }
 
 // ProvideHTTPV1OnboardingHandler constructs the freelancer onboarding handler.
@@ -50,7 +50,7 @@ func ProvideHTTPV1OnboardingHandler(
 	service httpserver.PaymentOnboardingService,
 	lg logging.Logger,
 ) (httpserver.OnboardingHandler, error) {
-	return httpserver.NewOnboardingHandler(service, cfg.JWT.Secret, lg)
+	return httpserver.NewOnboardingHandler(service, cfg.JWT.AccessSecret, lg)
 }
 
 // InvokeRegisterHTTPV1Routes registers versioned HTTP routes on the server.

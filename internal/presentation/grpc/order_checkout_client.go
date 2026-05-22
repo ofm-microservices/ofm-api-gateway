@@ -1,0 +1,96 @@
+package grpc
+
+import (
+	"context"
+	"strings"
+
+	gateway "api-gateway/internal/domain"
+
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
+	ordercheckoutv1 "github.com/ofm-microservices/ofm-common/proto/ordercheckout/v1"
+	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	grpcpkg "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
+
+type orderCheckoutClient struct {
+	conn *grpcpkg.ClientConn
+	cl   ordercheckoutv1.OrderCheckoutServiceClient
+	log  logging.Logger
+	mapr OrderCheckoutMapper
+}
+
+// NewOrderCheckoutClient constructs the gRPC client used by api-gateway to
+// orchestrate the hybrid order checkout flow.
+func NewOrderCheckoutClient(cfg OrderSagaConfig, log Logger) (OrderCheckoutClient, error) {
+	if strings.TrimSpace(cfg.Address) == "" {
+		return nil, ErrEmptyOrderSagaAddress
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+	conn, err := grpcpkg.NewClient(
+		cfg.Address,
+		grpcpkg.WithTransportCredentials(insecure.NewCredentials()),
+		grpcpkg.WithStatsHandler(otelgrpc.NewClientHandler()),
+		grpcpkg.WithUnaryInterceptor(metrics.UnaryClientInterceptor()),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &orderCheckoutClient{
+		conn: conn,
+		cl:   ordercheckoutv1.NewOrderCheckoutServiceClient(conn),
+		log:  log.With(logging.String("module", "order-checkout-client"), logging.String("address", cfg.Address)),
+		mapr: newOrderCheckoutMapper(),
+	}, nil
+}
+
+func (c *orderCheckoutClient) StartOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error) {
+	res, err := c.cl.StartOrder(ctx, c.mapr.ToStartOrderRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToStartOrderResponse(res), nil
+}
+
+func (c *orderCheckoutClient) ConfirmOrder(ctx context.Context, req gateway.ConfirmOrderRequest) (*gateway.ConfirmOrderResult, error) {
+	res, err := c.cl.ConfirmOrder(ctx, c.mapr.ToConfirmOrderRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToConfirmOrderResponse(res), nil
+}
+
+func (c *orderCheckoutClient) SubmitRequirements(ctx context.Context, req gateway.SubmitOrderRequirementsRequest) (*gateway.SubmitOrderRequirementsResult, error) {
+	res, err := c.cl.SubmitRequirements(ctx, c.mapr.ToSubmitRequirementsRequest(req))
+	if err != nil { return nil, c.mapr.ToError(err) }
+	return c.mapr.ToSubmitRequirementsResponse(res), nil
+}
+
+func (c *orderCheckoutClient) SubmitMessage(ctx context.Context, req gateway.SubmitOrderMessageRequest) (*gateway.SubmitOrderMessageResult, error) {
+	res, err := c.cl.SubmitMessage(ctx, c.mapr.ToSubmitMessageRequest(req))
+	if err != nil { return nil, c.mapr.ToError(err) }
+	return c.mapr.ToSubmitMessageResponse(res), nil
+}
+
+func (c *orderCheckoutClient) CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateOrderAttachmentUploadURLRequest) (*gateway.CreateOrderAttachmentUploadURLResult, error) {
+	res, err := c.cl.CreateAttachmentUploadURL(ctx, c.mapr.ToCreateAttachmentUploadURLRequest(req))
+	if err != nil { return nil, c.mapr.ToError(err) }
+	return c.mapr.ToCreateAttachmentUploadURLResponse(res), nil
+}
+
+func (c *orderCheckoutClient) CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteOrderAttachmentUploadRequest) (*gateway.CompleteOrderAttachmentUploadResult, error) {
+	res, err := c.cl.CompleteAttachmentUpload(ctx, c.mapr.ToCompleteAttachmentUploadRequest(req))
+	if err != nil { return nil, c.mapr.ToError(err) }
+	return c.mapr.ToCompleteAttachmentUploadResponse(res), nil
+}
+
+func (c *orderCheckoutClient) Close() error {
+	if c == nil || c.conn == nil {
+		return nil
+	}
+	c.log.Info("closing order checkout grpc client")
+	return c.conn.Close()
+}

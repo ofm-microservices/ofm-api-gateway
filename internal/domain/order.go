@@ -2,36 +2,153 @@ package gateway
 
 // CreateOrderRequest starts the public order creation flow.
 type CreateOrderRequest struct {
-	SagaID               string `json:"saga_id,omitempty"`
-	OrderID              string `json:"order_id,omitempty"`
-	RequestedAt          string `json:"requested_at,omitempty"`
-	IdempotencyKey       string `json:"idempotency_key,omitempty"`
 	BuyerID              string `json:"buyer_id,omitempty"`
-	BuyerEmail           string `json:"buyer_email"`
-	RealtimeConnectionID string `json:"realtime_connection_id,omitempty"`
+	BuyerEmail           string `json:"buyer_email,omitempty"`
 	GigID                string `json:"gig_id"`
-	GigTitle             string `json:"gig_title"`
 	PackageID            string `json:"package_id"`
-	PackageTier          string `json:"package_tier"`
-	PackageDescription   string `json:"package_description"`
-	PackageDeliveryDays  int32  `json:"package_delivery_days"`
-	PriceCents           int64  `json:"price_cents"`
-	Currency             string `json:"currency"`
+	RealtimeConnectionID string `json:"realtime_connection_id,omitempty"`
+	IdempotencyKey       string `json:"idempotency_key,omitempty"`
+	RequestedAt          string `json:"requested_at,omitempty"`
 }
 
 // CreateOrderResult reports that the gateway accepted the order command.
 type CreateOrderResult struct {
-	SagaID  string `json:"saga_id"`
-	OrderID string `json:"order_id"`
-	Status  string `json:"status"`
+	SagaID      string          `json:"saga_id"`
+	OrderID     string          `json:"order_id"`
+	Status      string          `json:"status"`
+	CheckoutURL string          `json:"checkout_url,omitempty"`
+	Snapshot    *OrderSnapshot  `json:"snapshot,omitempty"`
+	Questions   []OrderQuestion `json:"questions,omitempty"`
+}
+
+// ConfirmOrderRequest finalizes the order checkout flow and creates a payment
+// session.
+type ConfirmOrderRequest struct {
+	OrderID              string `json:"order_id"`
+	BuyerID              string `json:"buyer_id,omitempty"`
+	RealtimeConnectionID string `json:"realtime_connection_id,omitempty"`
+	IdempotencyKey       string `json:"idempotency_key,omitempty"`
+	RequestedAt          string `json:"requested_at,omitempty"`
+}
+
+// ConfirmOrderResult reports that checkout can proceed after confirmation.
+type ConfirmOrderResult struct {
+	SagaID      string `json:"saga_id"`
+	OrderID     string `json:"order_id"`
+	Status      string `json:"status"`
+	CheckoutURL string `json:"checkout_url,omitempty"`
+	PaymentID   string `json:"payment_id,omitempty"`
+}
+
+// OrderSnapshot captures the immutable commercial order data shown to the
+// buyer before checkout.
+type OrderSnapshot struct {
+	GigID              string          `json:"gig_id"`
+	PackageID          string          `json:"package_id"`
+	SellerUserID       string          `json:"seller_user_id"`
+	GigTitle           string          `json:"gig_title"`
+	PackageTitle       string          `json:"package_title"`
+	PackageDescription string          `json:"package_description"`
+	PriceCents         int64           `json:"price_cents"`
+	Currency           string          `json:"currency"`
+	DeliveryDays       int32           `json:"delivery_days"`
+	RevisionCount      int32           `json:"revision_count"`
+	Questions          []OrderQuestion `json:"questions,omitempty"`
+}
+
+// OrderQuestion describes one snapshot question in the order start response.
+type OrderQuestion struct {
+	ID        string                `json:"id"`
+	Text      string                `json:"text"`
+	Type      string                `json:"type"`
+	Required  bool                  `json:"required"`
+	Options   []OrderQuestionOption `json:"options,omitempty"`
+	SortOrder int32                 `json:"sort_order"`
+}
+
+// OrderQuestionOption describes one selectable option for a question.
+type OrderQuestionOption struct {
+	ID    string `json:"id"`
+	Text  string `json:"text"`
+	Value string `json:"value"`
+}
+
+// SubmitOrderRequirementsRequest carries the buyer requirement answers.
+type SubmitOrderRequirementsRequest struct {
+	OrderID   string                `json:"order_id"`
+	BuyerID   string                `json:"buyer_id,omitempty"`
+	Answers   []OrderRequirementAnswer `json:"answers,omitempty"`
+	RequestedAt string             `json:"requested_at,omitempty"`
+}
+
+// OrderRequirementAnswer represents one question answer.
+type OrderRequirementAnswer struct {
+	QuestionID string `json:"question_id"`
+	Value      string `json:"value"`
+}
+
+// SubmitOrderRequirementsResult reports the step outcome.
+type SubmitOrderRequirementsResult struct {
+	OrderID    string `json:"order_id"`
+	Status     string `json:"status"`
+	CurrentStep string `json:"current_step,omitempty"`
+}
+
+// SubmitOrderMessageRequest carries the buyer initial message.
+type SubmitOrderMessageRequest struct {
+	OrderID     string `json:"order_id"`
+	BuyerID     string `json:"buyer_id,omitempty"`
+	Message     string `json:"message"`
+	RequestedAt string `json:"requested_at,omitempty"`
+}
+
+// SubmitOrderMessageResult reports the message step outcome.
+type SubmitOrderMessageResult struct {
+	OrderID    string `json:"order_id"`
+	Status     string `json:"status"`
+	CurrentStep string `json:"current_step,omitempty"`
+}
+
+// CreateOrderAttachmentUploadURLRequest asks for a presigned upload URL.
+type CreateOrderAttachmentUploadURLRequest struct {
+	OrderID     string `json:"order_id"`
+	BuyerID     string `json:"buyer_id,omitempty"`
+	FileName    string `json:"file_name"`
+	MimeType    string `json:"mime_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+	RequestedAt string `json:"requested_at,omitempty"`
+}
+
+// CreateOrderAttachmentUploadURLResult returns the upload URL.
+type CreateOrderAttachmentUploadURLResult struct {
+	OrderID      string `json:"order_id"`
+	AttachmentID  string `json:"attachment_id"`
+	UploadURL    string `json:"upload_url"`
+	FileKey      string `json:"file_key"`
+}
+
+// CompleteOrderAttachmentUploadRequest completes the attachment metadata.
+type CompleteOrderAttachmentUploadRequest struct {
+	OrderID     string `json:"order_id"`
+	BuyerID     string `json:"buyer_id,omitempty"`
+	AttachmentID string `json:"attachment_id"`
+	FileKey     string `json:"file_key"`
+	RequestedAt string `json:"requested_at,omitempty"`
+}
+
+// CompleteOrderAttachmentUploadResult reports attachment completion.
+type CompleteOrderAttachmentUploadResult struct {
+	OrderID     string `json:"order_id"`
+	AttachmentID string `json:"attachment_id"`
+	Status      string `json:"status"`
 }
 
 // StartFreelancerOnboardingRequest starts the Stripe Connect onboarding flow.
 type StartFreelancerOnboardingRequest struct {
-	UserID    string `json:"user_id,omitempty"`
-	Email     string `json:"email,omitempty"`
-	Country   string `json:"country,omitempty"`
-	ReturnURL string `json:"return_url,omitempty"`
+	UserID     string `json:"user_id,omitempty"`
+	Email      string `json:"email,omitempty"`
+	Country    string `json:"country,omitempty"`
+	ReturnURL  string `json:"return_url,omitempty"`
 	RefreshURL string `json:"refresh_url,omitempty"`
 }
 

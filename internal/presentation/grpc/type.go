@@ -7,6 +7,7 @@ import (
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	authv1 "github.com/ofm-microservices/ofm-common/proto/auth/v1"
 	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
+	ordercheckoutv1 "github.com/ofm-microservices/ofm-common/proto/ordercheckout/v1"
 	paymentconnectv1 "github.com/ofm-microservices/ofm-common/proto/paymentconnect/v1"
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 )
@@ -63,6 +64,18 @@ type PaymentOnboardingClient interface {
 	Close() error
 }
 
+// OrderCheckoutClient is the gateway-facing gRPC adapter for the hybrid order
+// checkout flow.
+type OrderCheckoutClient interface {
+	StartOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error)
+	ConfirmOrder(ctx context.Context, req gateway.ConfirmOrderRequest) (*gateway.ConfirmOrderResult, error)
+	SubmitRequirements(ctx context.Context, req gateway.SubmitOrderRequirementsRequest) (*gateway.SubmitOrderRequirementsResult, error)
+	SubmitMessage(ctx context.Context, req gateway.SubmitOrderMessageRequest) (*gateway.SubmitOrderMessageResult, error)
+	CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateOrderAttachmentUploadURLRequest) (*gateway.CreateOrderAttachmentUploadURLResult, error)
+	CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteOrderAttachmentUploadRequest) (*gateway.CompleteOrderAttachmentUploadResult, error)
+	Close() error
+}
+
 // RegistrationMapper translates between gateway-domain signup types and the
 // shared registration gRPC contract.
 type RegistrationMapper interface {
@@ -104,6 +117,24 @@ type PaymentOnboardingMapper interface {
 	ToError(err error) error
 }
 
+// OrderCheckoutMapper translates between gateway order types and the shared
+// order checkout gRPC contract.
+type OrderCheckoutMapper interface {
+	ToStartOrderRequest(req gateway.CreateOrderRequest) *ordercheckoutv1.StartOrderRequest
+	ToStartOrderResponse(res *ordercheckoutv1.StartOrderResponse) *gateway.CreateOrderResult
+	ToConfirmOrderRequest(req gateway.ConfirmOrderRequest) *ordercheckoutv1.ConfirmOrderRequest
+	ToConfirmOrderResponse(res *ordercheckoutv1.ConfirmOrderResponse) *gateway.ConfirmOrderResult
+	ToSubmitRequirementsRequest(req gateway.SubmitOrderRequirementsRequest) *ordercheckoutv1.SubmitRequirementsRequest
+	ToSubmitRequirementsResponse(res *ordercheckoutv1.SubmitRequirementsResponse) *gateway.SubmitOrderRequirementsResult
+	ToSubmitMessageRequest(req gateway.SubmitOrderMessageRequest) *ordercheckoutv1.SubmitMessageRequest
+	ToSubmitMessageResponse(res *ordercheckoutv1.SubmitMessageResponse) *gateway.SubmitOrderMessageResult
+	ToCreateAttachmentUploadURLRequest(req gateway.CreateOrderAttachmentUploadURLRequest) *ordercheckoutv1.CreateAttachmentUploadURLRequest
+	ToCreateAttachmentUploadURLResponse(res *ordercheckoutv1.CreateAttachmentUploadURLResponse) *gateway.CreateOrderAttachmentUploadURLResult
+	ToCompleteAttachmentUploadRequest(req gateway.CompleteOrderAttachmentUploadRequest) *ordercheckoutv1.CompleteAttachmentUploadRequest
+	ToCompleteAttachmentUploadResponse(res *ordercheckoutv1.CompleteAttachmentUploadResponse) *gateway.CompleteOrderAttachmentUploadResult
+	ToError(err error) error
+}
+
 // RegistrationSagaConfig aliases the outbound saga gRPC client configuration.
 type RegistrationSagaConfig = config.RegistrationSagaConfig
 
@@ -115,3 +146,6 @@ type GigServiceConfig = config.GigServiceConfig
 
 // PaymentServiceConfig aliases the outbound payment gRPC client configuration.
 type PaymentServiceConfig = config.PaymentServiceConfig
+
+// OrderSagaConfig aliases the outbound order-saga gRPC client configuration.
+type OrderSagaConfig = config.OrderSagaConfig

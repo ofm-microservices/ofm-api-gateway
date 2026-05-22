@@ -14,6 +14,7 @@ type Config struct {
 	JWT              JWTConfig
 	NATS             NATSConfig
 	RegistrationSaga RegistrationSagaConfig
+	OrderSaga        OrderSagaConfig
 	AuthService      AuthServiceConfig
 	GigService       GigServiceConfig
 	PaymentService   PaymentServiceConfig

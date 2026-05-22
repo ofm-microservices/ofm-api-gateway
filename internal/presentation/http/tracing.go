@@ -27,23 +27,33 @@ func (c fiberCarrier) Keys() []string {
 func tracingMiddleware() fiber.Handler {
 	tracer := otel.Tracer("api-gateway/http")
 	return func(c *fiber.Ctx) error {
+		if c.Path() == "/metrics" {
+			return c.Next()
+		}
+
 		ctx := otel.GetTextMapPropagator().Extract(c.UserContext(), fiberCarrier{h: &c.Request().Header})
-		ctx, span := tracer.Start(ctx, c.Route().Path,
+		ctx, span := tracer.Start(ctx, c.Method()+" "+c.Path(),
 			trace.WithSpanKind(trace.SpanKindServer),
 			trace.WithAttributes(
 				attribute.String("http.method", c.Method()),
-				attribute.String("http.route", c.Route().Path),
+				attribute.String("http.target", c.Path()),
 			),
 		)
 		defer span.End()
 		c.SetUserContext(ctx)
 
 		err := c.Next()
+		route := c.Route().Path
+		if route == "" {
+			route = "unknown"
+		}
+		span.SetName(route)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 		}
 		span.SetAttributes(
+			attribute.String("http.route", route),
 			attribute.Int("http.status_code", c.Response().StatusCode()),
 		)
 		otel.GetTextMapPropagator().Inject(ctx, responseCarrier{h: &c.Response().Header})

@@ -34,7 +34,7 @@ func ProvideGigService(
 
 // ProvideOrderService constructs the order application service.
 func ProvideOrderService(
-	client service.OrderPublisher,
+	client service.OrderCheckoutClient,
 	lg logging.Logger,
 ) (service.OrderService, error) {
 	return service.NewOrder(client, lg)

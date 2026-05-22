@@ -30,9 +30,10 @@ var _ = Describe("Load", func() {
 			"LOG_LEVEL",
 			"HTTP_HOST",
 			"HTTP_PORT",
-			"JWT_SECRET",
+			"JWT_ACCESS_SECRET",
 			"REGISTRATION_SAGA_ADDRESS",
 			"GIG_SERVICE_ADDRESS",
+			"PAYMENT_SERVICE_ADDRESS",
 		} {
 			Expect(os.Unsetenv(key)).To(Succeed())
 		}
@@ -50,7 +51,7 @@ var _ = Describe("Load", func() {
 		Expect(cfg.App.LogLevel).To(Equal("info"))
 		Expect(cfg.HTTP.Host).To(Equal("0.0.0.0"))
 		Expect(cfg.HTTP.Port).To(Equal(8080))
-		Expect(cfg.JWT.Secret).To(Equal("local-dev-secret-change-me"))
+		Expect(cfg.JWT.AccessSecret).To(Equal("local-dev-access-secret-change-me"))
 		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:9500"))
 		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:9503"))
 	})
@@ -60,9 +61,10 @@ var _ = Describe("Load", func() {
 		Expect(os.Setenv("LOG_LEVEL", "debug")).To(Succeed())
 		Expect(os.Setenv("HTTP_HOST", "127.0.0.1")).To(Succeed())
 		Expect(os.Setenv("HTTP_PORT", "18080")).To(Succeed())
-		Expect(os.Setenv("JWT_SECRET", "test-secret")).To(Succeed())
+		Expect(os.Setenv("JWT_ACCESS_SECRET", "test-secret")).To(Succeed())
 		Expect(os.Setenv("REGISTRATION_SAGA_ADDRESS", "127.0.0.1:19500")).To(Succeed())
 		Expect(os.Setenv("GIG_SERVICE_ADDRESS", "127.0.0.1:19503")).To(Succeed())
+		Expect(os.Setenv("PAYMENT_SERVICE_ADDRESS", "127.0.0.1:19506")).To(Succeed())
 
 		cfg, err := Load()
 
@@ -71,9 +73,10 @@ var _ = Describe("Load", func() {
 		Expect(cfg.App.LogLevel).To(Equal("debug"))
 		Expect(cfg.HTTP.Host).To(Equal("127.0.0.1"))
 		Expect(cfg.HTTP.Port).To(Equal(18080))
-		Expect(cfg.JWT.Secret).To(Equal("test-secret"))
+		Expect(cfg.JWT.AccessSecret).To(Equal("test-secret"))
 		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:19500"))
 		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:19503"))
+		Expect(cfg.PaymentService.Address).To(Equal("127.0.0.1:19506"))
 	})
 
 	It("wraps env parsing failures", func() {
