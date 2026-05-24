@@ -65,26 +65,66 @@ func (c *orderCheckoutClient) ConfirmOrder(ctx context.Context, req gateway.Conf
 
 func (c *orderCheckoutClient) SubmitRequirements(ctx context.Context, req gateway.SubmitOrderRequirementsRequest) (*gateway.SubmitOrderRequirementsResult, error) {
 	res, err := c.cl.SubmitRequirements(ctx, c.mapr.ToSubmitRequirementsRequest(req))
-	if err != nil { return nil, c.mapr.ToError(err) }
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
 	return c.mapr.ToSubmitRequirementsResponse(res), nil
 }
 
 func (c *orderCheckoutClient) SubmitMessage(ctx context.Context, req gateway.SubmitOrderMessageRequest) (*gateway.SubmitOrderMessageResult, error) {
 	res, err := c.cl.SubmitMessage(ctx, c.mapr.ToSubmitMessageRequest(req))
-	if err != nil { return nil, c.mapr.ToError(err) }
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
 	return c.mapr.ToSubmitMessageResponse(res), nil
 }
 
 func (c *orderCheckoutClient) CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateOrderAttachmentUploadURLRequest) (*gateway.CreateOrderAttachmentUploadURLResult, error) {
 	res, err := c.cl.CreateAttachmentUploadURL(ctx, c.mapr.ToCreateAttachmentUploadURLRequest(req))
-	if err != nil { return nil, c.mapr.ToError(err) }
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
 	return c.mapr.ToCreateAttachmentUploadURLResponse(res), nil
 }
 
 func (c *orderCheckoutClient) CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteOrderAttachmentUploadRequest) (*gateway.CompleteOrderAttachmentUploadResult, error) {
 	res, err := c.cl.CompleteAttachmentUpload(ctx, c.mapr.ToCompleteAttachmentUploadRequest(req))
-	if err != nil { return nil, c.mapr.ToError(err) }
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
 	return c.mapr.ToCompleteAttachmentUploadResponse(res), nil
+}
+
+func (c *orderCheckoutClient) DeliverOrder(ctx context.Context, req gateway.DeliverOrderRequest) (*gateway.DeliverOrderResult, error) {
+	res, err := c.cl.DeliverOrder(ctx, c.mapr.ToDeliverOrderRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToDeliverOrderResponse(res), nil
+}
+
+func (c *orderCheckoutClient) AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error) {
+	res, err := c.cl.AcceptDelivery(ctx, c.mapr.ToAcceptDeliveryRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToAcceptDeliveryResponse(res), nil
+}
+
+func (c *orderCheckoutClient) RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error) {
+	res, err := c.cl.RequestRevision(ctx, c.mapr.ToRequestRevisionRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToRequestRevisionResponse(res), nil
+}
+
+func (c *orderCheckoutClient) OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error) {
+	res, err := c.cl.OpenDispute(ctx, c.mapr.ToOpenDisputeRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToOpenDisputeResponse(res), nil
 }
 
 func (c *orderCheckoutClient) Close() error {

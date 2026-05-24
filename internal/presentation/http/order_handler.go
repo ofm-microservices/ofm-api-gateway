@@ -43,6 +43,10 @@ func (h *orderHandler) RegisterRoutes(router fiber.Router) {
 	orders.Use(h.auth.Middleware())
 	orders.Post("/start", h.HandleCreateOrder)
 	orders.Post("/:order_id/confirm", h.HandleConfirmOrder)
+	orders.Post("/:order_id/deliver", h.HandleDeliverOrder)
+	orders.Post("/:order_id/accept", h.HandleAcceptDelivery)
+	orders.Post("/:order_id/request-revision", h.HandleRequestRevision)
+	orders.Post("/:order_id/dispute", h.HandleOpenDispute)
 }
 
 // HandleCreateOrder validates and forwards the order start request.
@@ -111,6 +115,130 @@ func (h *orderHandler) HandleConfirmOrder(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
+// HandleDeliverOrder validates and forwards the seller delivery request.
+func (h *orderHandler) HandleDeliverOrder(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	var req gateway.DeliverOrderRequest
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	sellerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.SellerID = sellerID
+
+	result, err := h.service.DeliverOrder(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order deliver request accepted",
+		logging.Operation("http.order.deliver"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("seller_id", sellerID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleAcceptDelivery validates and forwards the buyer acceptance request.
+func (h *orderHandler) HandleAcceptDelivery(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	var req gateway.AcceptDeliveryRequest
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	buyerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.BuyerID = buyerID
+
+	result, err := h.service.AcceptDelivery(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order accept delivery request accepted",
+		logging.Operation("http.order.accept_delivery"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("buyer_id", buyerID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleRequestRevision validates and forwards the buyer revision request.
+func (h *orderHandler) HandleRequestRevision(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	var req gateway.RequestRevisionRequest
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	buyerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.BuyerID = buyerID
+
+	result, err := h.service.RequestRevision(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order revision request accepted",
+		logging.Operation("http.order.request_revision"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("buyer_id", buyerID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleOpenDispute validates and forwards the buyer dispute request.
+func (h *orderHandler) HandleOpenDispute(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	var req gateway.OpenDisputeRequest
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	buyerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.BuyerID = buyerID
+
+	result, err := h.service.OpenDispute(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order dispute request accepted",
+		logging.Operation("http.order.open_dispute"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("buyer_id", buyerID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
 func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, gateway.ErrInvalidOrderConnectionID),
@@ -129,10 +257,21 @@ func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderNotConfirmable),
 		errors.Is(err, gateway.ErrOrderAlreadyPaymentPending),
-		errors.Is(err, gateway.ErrOrderAlreadyFunded):
+		errors.Is(err, gateway.ErrOrderAlreadyFunded),
+		errors.Is(err, gateway.ErrOrderNotDeliverable),
+		errors.Is(err, gateway.ErrOrderNotAcceptable),
+		errors.Is(err, gateway.ErrOrderNotRevisionable),
+		errors.Is(err, gateway.ErrOrderNotDisputable):
 		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrOrderReleaseFailed):
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderNotOwned):
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrInvalidOrderDeliveryMessage),
+		errors.Is(err, gateway.ErrInvalidOrderReason),
+		errors.Is(err, gateway.ErrInvalidOrderID),
+		errors.Is(err, gateway.ErrInvalidOrderSellerID):
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	default:
 		h.log.Error("request failed", logging.Err(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})

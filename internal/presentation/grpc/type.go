@@ -73,6 +73,10 @@ type OrderCheckoutClient interface {
 	SubmitMessage(ctx context.Context, req gateway.SubmitOrderMessageRequest) (*gateway.SubmitOrderMessageResult, error)
 	CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateOrderAttachmentUploadURLRequest) (*gateway.CreateOrderAttachmentUploadURLResult, error)
 	CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteOrderAttachmentUploadRequest) (*gateway.CompleteOrderAttachmentUploadResult, error)
+	DeliverOrder(ctx context.Context, req gateway.DeliverOrderRequest) (*gateway.DeliverOrderResult, error)
+	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
+	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
+	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
 	Close() error
 }
 
@@ -132,6 +136,14 @@ type OrderCheckoutMapper interface {
 	ToCreateAttachmentUploadURLResponse(res *ordercheckoutv1.CreateAttachmentUploadURLResponse) *gateway.CreateOrderAttachmentUploadURLResult
 	ToCompleteAttachmentUploadRequest(req gateway.CompleteOrderAttachmentUploadRequest) *ordercheckoutv1.CompleteAttachmentUploadRequest
 	ToCompleteAttachmentUploadResponse(res *ordercheckoutv1.CompleteAttachmentUploadResponse) *gateway.CompleteOrderAttachmentUploadResult
+	ToDeliverOrderRequest(req gateway.DeliverOrderRequest) *ordercheckoutv1.DeliverOrderRequest
+	ToDeliverOrderResponse(res *ordercheckoutv1.DeliverOrderResponse) *gateway.DeliverOrderResult
+	ToAcceptDeliveryRequest(req gateway.AcceptDeliveryRequest) *ordercheckoutv1.AcceptDeliveryRequest
+	ToAcceptDeliveryResponse(res *ordercheckoutv1.AcceptDeliveryResponse) *gateway.AcceptDeliveryResult
+	ToRequestRevisionRequest(req gateway.RequestRevisionRequest) *ordercheckoutv1.RequestRevisionRequest
+	ToRequestRevisionResponse(res *ordercheckoutv1.RequestRevisionResponse) *gateway.RequestRevisionResult
+	ToOpenDisputeRequest(req gateway.OpenDisputeRequest) *ordercheckoutv1.OpenDisputeRequest
+	ToOpenDisputeResponse(res *ordercheckoutv1.OpenDisputeResponse) *gateway.OpenDisputeResult
 	ToError(err error) error
 }
 

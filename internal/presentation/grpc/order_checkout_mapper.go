@@ -89,15 +89,17 @@ func (m *orderCheckoutMapper) ToSubmitRequirementsRequest(req gateway.SubmitOrde
 		answers = append(answers, &ordercheckoutv1.OrderRequirementAnswer{QuestionId: a.QuestionID, Value: a.Value})
 	}
 	return &ordercheckoutv1.SubmitRequirementsRequest{
-		OrderId:      strings.TrimSpace(req.OrderID),
-		BuyerUserId:  strings.TrimSpace(req.BuyerID),
-		Answers:      answers,
-		RequestedAt:  strings.TrimSpace(req.RequestedAt),
+		OrderId:     strings.TrimSpace(req.OrderID),
+		BuyerUserId: strings.TrimSpace(req.BuyerID),
+		Answers:     answers,
+		RequestedAt: strings.TrimSpace(req.RequestedAt),
 	}
 }
 
 func (m *orderCheckoutMapper) ToSubmitRequirementsResponse(res *ordercheckoutv1.SubmitRequirementsResponse) *gateway.SubmitOrderRequirementsResult {
-	if res == nil { return &gateway.SubmitOrderRequirementsResult{} }
+	if res == nil {
+		return &gateway.SubmitOrderRequirementsResult{}
+	}
 	return &gateway.SubmitOrderRequirementsResult{OrderID: res.GetOrderId(), Status: res.GetStatus(), CurrentStep: res.GetCurrentStep()}
 }
 
@@ -106,7 +108,9 @@ func (m *orderCheckoutMapper) ToSubmitMessageRequest(req gateway.SubmitOrderMess
 }
 
 func (m *orderCheckoutMapper) ToSubmitMessageResponse(res *ordercheckoutv1.SubmitMessageResponse) *gateway.SubmitOrderMessageResult {
-	if res == nil { return &gateway.SubmitOrderMessageResult{} }
+	if res == nil {
+		return &gateway.SubmitOrderMessageResult{}
+	}
 	return &gateway.SubmitOrderMessageResult{OrderID: res.GetOrderId(), Status: res.GetStatus(), CurrentStep: res.GetCurrentStep()}
 }
 
@@ -115,7 +119,9 @@ func (m *orderCheckoutMapper) ToCreateAttachmentUploadURLRequest(req gateway.Cre
 }
 
 func (m *orderCheckoutMapper) ToCreateAttachmentUploadURLResponse(res *ordercheckoutv1.CreateAttachmentUploadURLResponse) *gateway.CreateOrderAttachmentUploadURLResult {
-	if res == nil { return &gateway.CreateOrderAttachmentUploadURLResult{} }
+	if res == nil {
+		return &gateway.CreateOrderAttachmentUploadURLResult{}
+	}
 	return &gateway.CreateOrderAttachmentUploadURLResult{OrderID: res.GetOrderId(), AttachmentID: res.GetAttachmentId(), UploadURL: res.GetUploadUrl(), FileKey: res.GetFileKey()}
 }
 
@@ -124,8 +130,60 @@ func (m *orderCheckoutMapper) ToCompleteAttachmentUploadRequest(req gateway.Comp
 }
 
 func (m *orderCheckoutMapper) ToCompleteAttachmentUploadResponse(res *ordercheckoutv1.CompleteAttachmentUploadResponse) *gateway.CompleteOrderAttachmentUploadResult {
-	if res == nil { return &gateway.CompleteOrderAttachmentUploadResult{} }
+	if res == nil {
+		return &gateway.CompleteOrderAttachmentUploadResult{}
+	}
 	return &gateway.CompleteOrderAttachmentUploadResult{OrderID: res.GetOrderId(), AttachmentID: res.GetAttachmentId(), Status: res.GetStatus()}
+}
+
+func (m *orderCheckoutMapper) ToDeliverOrderRequest(req gateway.DeliverOrderRequest) *ordercheckoutv1.DeliverOrderRequest {
+	return &ordercheckoutv1.DeliverOrderRequest{
+		OrderId:         strings.TrimSpace(req.OrderID),
+		SellerUserId:    strings.TrimSpace(req.SellerID),
+		DeliveryMessage: strings.TrimSpace(req.DeliveryMessage),
+		AttachmentIds:   append([]string(nil), req.AttachmentIDs...),
+		RequestedAt:     strings.TrimSpace(req.RequestedAt),
+	}
+}
+
+func (m *orderCheckoutMapper) ToDeliverOrderResponse(res *ordercheckoutv1.DeliverOrderResponse) *gateway.DeliverOrderResult {
+	if res == nil {
+		return &gateway.DeliverOrderResult{}
+	}
+	return &gateway.DeliverOrderResult{OrderID: res.GetOrderId(), Status: res.GetStatus(), CurrentStep: res.GetCurrentStep()}
+}
+
+func (m *orderCheckoutMapper) ToAcceptDeliveryRequest(req gateway.AcceptDeliveryRequest) *ordercheckoutv1.AcceptDeliveryRequest {
+	return &ordercheckoutv1.AcceptDeliveryRequest{OrderId: strings.TrimSpace(req.OrderID), BuyerUserId: strings.TrimSpace(req.BuyerID), RequestedAt: strings.TrimSpace(req.RequestedAt)}
+}
+
+func (m *orderCheckoutMapper) ToAcceptDeliveryResponse(res *ordercheckoutv1.AcceptDeliveryResponse) *gateway.AcceptDeliveryResult {
+	if res == nil {
+		return &gateway.AcceptDeliveryResult{}
+	}
+	return &gateway.AcceptDeliveryResult{OrderID: res.GetOrderId(), Status: res.GetStatus(), CurrentStep: res.GetCurrentStep()}
+}
+
+func (m *orderCheckoutMapper) ToRequestRevisionRequest(req gateway.RequestRevisionRequest) *ordercheckoutv1.RequestRevisionRequest {
+	return &ordercheckoutv1.RequestRevisionRequest{OrderId: strings.TrimSpace(req.OrderID), BuyerUserId: strings.TrimSpace(req.BuyerID), Reason: strings.TrimSpace(req.Reason), RequestedAt: strings.TrimSpace(req.RequestedAt)}
+}
+
+func (m *orderCheckoutMapper) ToRequestRevisionResponse(res *ordercheckoutv1.RequestRevisionResponse) *gateway.RequestRevisionResult {
+	if res == nil {
+		return &gateway.RequestRevisionResult{}
+	}
+	return &gateway.RequestRevisionResult{OrderID: res.GetOrderId(), Status: res.GetStatus(), CurrentStep: res.GetCurrentStep()}
+}
+
+func (m *orderCheckoutMapper) ToOpenDisputeRequest(req gateway.OpenDisputeRequest) *ordercheckoutv1.OpenDisputeRequest {
+	return &ordercheckoutv1.OpenDisputeRequest{OrderId: strings.TrimSpace(req.OrderID), BuyerUserId: strings.TrimSpace(req.BuyerID), Reason: strings.TrimSpace(req.Reason), RequestedAt: strings.TrimSpace(req.RequestedAt)}
+}
+
+func (m *orderCheckoutMapper) ToOpenDisputeResponse(res *ordercheckoutv1.OpenDisputeResponse) *gateway.OpenDisputeResult {
+	if res == nil {
+		return &gateway.OpenDisputeResult{}
+	}
+	return &gateway.OpenDisputeResult{OrderID: res.GetOrderId(), Status: res.GetStatus(), CurrentStep: res.GetCurrentStep()}
 }
 
 func (m *orderCheckoutMapper) ToError(err error) error {
@@ -159,6 +217,16 @@ func (m *orderCheckoutMapper) ToError(err error) error {
 			return gateway.ErrOrderAlreadyPaymentPending
 		case gateway.ErrOrderAlreadyFunded.Error():
 			return gateway.ErrOrderAlreadyFunded
+		case gateway.ErrOrderNotDeliverable.Error():
+			return gateway.ErrOrderNotDeliverable
+		case gateway.ErrOrderNotAcceptable.Error():
+			return gateway.ErrOrderNotAcceptable
+		case gateway.ErrOrderNotRevisionable.Error():
+			return gateway.ErrOrderNotRevisionable
+		case gateway.ErrOrderNotDisputable.Error():
+			return gateway.ErrOrderNotDisputable
+		case gateway.ErrOrderReleaseFailed.Error():
+			return gateway.ErrOrderReleaseFailed
 		case gateway.ErrConnectOnboardingIncomplete.Error():
 			return gateway.ErrConnectOnboardingIncomplete
 		default:
