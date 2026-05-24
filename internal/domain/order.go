@@ -40,6 +40,66 @@ type ConfirmOrderResult struct {
 	PaymentID   string `json:"payment_id,omitempty"`
 }
 
+// DeliverOrderRequest submits the seller delivery payload.
+type DeliverOrderRequest struct {
+	OrderID         string   `json:"order_id"`
+	SellerID        string   `json:"seller_id,omitempty"`
+	DeliveryMessage string   `json:"delivery_message,omitempty"`
+	AttachmentIDs   []string `json:"attachment_ids,omitempty"`
+	RequestedAt     string   `json:"requested_at,omitempty"`
+}
+
+// DeliverOrderResult reports the delivery command outcome.
+type DeliverOrderResult struct {
+	OrderID     string `json:"order_id"`
+	Status      string `json:"status"`
+	CurrentStep string `json:"current_step,omitempty"`
+}
+
+// AcceptDeliveryRequest confirms the buyer accepted the seller delivery.
+type AcceptDeliveryRequest struct {
+	OrderID     string `json:"order_id"`
+	BuyerID     string `json:"buyer_id,omitempty"`
+	RequestedAt string `json:"requested_at,omitempty"`
+}
+
+// AcceptDeliveryResult reports the acceptance outcome.
+type AcceptDeliveryResult struct {
+	OrderID     string `json:"order_id"`
+	Status      string `json:"status"`
+	CurrentStep string `json:"current_step,omitempty"`
+}
+
+// RequestRevisionRequest asks the seller for revisions.
+type RequestRevisionRequest struct {
+	OrderID     string `json:"order_id"`
+	BuyerID     string `json:"buyer_id,omitempty"`
+	Reason      string `json:"reason,omitempty"`
+	RequestedAt string `json:"requested_at,omitempty"`
+}
+
+// RequestRevisionResult reports the revision request outcome.
+type RequestRevisionResult struct {
+	OrderID     string `json:"order_id"`
+	Status      string `json:"status"`
+	CurrentStep string `json:"current_step,omitempty"`
+}
+
+// OpenDisputeRequest opens a buyer dispute for the current delivery.
+type OpenDisputeRequest struct {
+	OrderID     string `json:"order_id"`
+	BuyerID     string `json:"buyer_id,omitempty"`
+	Reason      string `json:"reason,omitempty"`
+	RequestedAt string `json:"requested_at,omitempty"`
+}
+
+// OpenDisputeResult reports the dispute outcome.
+type OpenDisputeResult struct {
+	OrderID     string `json:"order_id"`
+	Status      string `json:"status"`
+	CurrentStep string `json:"current_step,omitempty"`
+}
+
 // OrderSnapshot captures the immutable commercial order data shown to the
 // buyer before checkout.
 type OrderSnapshot struct {
@@ -75,10 +135,10 @@ type OrderQuestionOption struct {
 
 // SubmitOrderRequirementsRequest carries the buyer requirement answers.
 type SubmitOrderRequirementsRequest struct {
-	OrderID   string                `json:"order_id"`
-	BuyerID   string                `json:"buyer_id,omitempty"`
-	Answers   []OrderRequirementAnswer `json:"answers,omitempty"`
-	RequestedAt string             `json:"requested_at,omitempty"`
+	OrderID     string                   `json:"order_id"`
+	BuyerID     string                   `json:"buyer_id,omitempty"`
+	Answers     []OrderRequirementAnswer `json:"answers,omitempty"`
+	RequestedAt string                   `json:"requested_at,omitempty"`
 }
 
 // OrderRequirementAnswer represents one question answer.
@@ -89,8 +149,8 @@ type OrderRequirementAnswer struct {
 
 // SubmitOrderRequirementsResult reports the step outcome.
 type SubmitOrderRequirementsResult struct {
-	OrderID    string `json:"order_id"`
-	Status     string `json:"status"`
+	OrderID     string `json:"order_id"`
+	Status      string `json:"status"`
 	CurrentStep string `json:"current_step,omitempty"`
 }
 
@@ -104,8 +164,8 @@ type SubmitOrderMessageRequest struct {
 
 // SubmitOrderMessageResult reports the message step outcome.
 type SubmitOrderMessageResult struct {
-	OrderID    string `json:"order_id"`
-	Status     string `json:"status"`
+	OrderID     string `json:"order_id"`
+	Status      string `json:"status"`
 	CurrentStep string `json:"current_step,omitempty"`
 }
 
@@ -122,25 +182,25 @@ type CreateOrderAttachmentUploadURLRequest struct {
 // CreateOrderAttachmentUploadURLResult returns the upload URL.
 type CreateOrderAttachmentUploadURLResult struct {
 	OrderID      string `json:"order_id"`
-	AttachmentID  string `json:"attachment_id"`
+	AttachmentID string `json:"attachment_id"`
 	UploadURL    string `json:"upload_url"`
 	FileKey      string `json:"file_key"`
 }
 
 // CompleteOrderAttachmentUploadRequest completes the attachment metadata.
 type CompleteOrderAttachmentUploadRequest struct {
-	OrderID     string `json:"order_id"`
-	BuyerID     string `json:"buyer_id,omitempty"`
+	OrderID      string `json:"order_id"`
+	BuyerID      string `json:"buyer_id,omitempty"`
 	AttachmentID string `json:"attachment_id"`
-	FileKey     string `json:"file_key"`
-	RequestedAt string `json:"requested_at,omitempty"`
+	FileKey      string `json:"file_key"`
+	RequestedAt  string `json:"requested_at,omitempty"`
 }
 
 // CompleteOrderAttachmentUploadResult reports attachment completion.
 type CompleteOrderAttachmentUploadResult struct {
-	OrderID     string `json:"order_id"`
+	OrderID      string `json:"order_id"`
 	AttachmentID string `json:"attachment_id"`
-	Status      string `json:"status"`
+	Status       string `json:"status"`
 }
 
 // StartFreelancerOnboardingRequest starts the Stripe Connect onboarding flow.

@@ -324,6 +324,131 @@ func (s *orderService) CompleteAttachmentUpload(ctx context.Context, req gateway
 	return s.client.CompleteAttachmentUpload(ctx, req)
 }
 
+func (s *orderService) DeliverOrder(ctx context.Context, req gateway.DeliverOrderRequest) (*gateway.DeliverOrderResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	sellerID := strings.TrimSpace(req.SellerID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if sellerID == "" {
+		return nil, gateway.ErrInvalidOrderSellerID
+	}
+	if strings.TrimSpace(req.DeliveryMessage) == "" {
+		return nil, gateway.ErrInvalidOrderDeliveryMessage
+	}
+	result, err := s.client.DeliverOrder(ctx, gateway.DeliverOrderRequest{
+		OrderID:         orderID,
+		SellerID:        sellerID,
+		DeliveryMessage: strings.TrimSpace(req.DeliveryMessage),
+		AttachmentIDs:   req.AttachmentIDs,
+		RequestedAt:     time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		log.Error("failed to deliver order",
+			logging.Operation("order.deliver"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("order_id", orderID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *orderService) AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	buyerID := strings.TrimSpace(req.BuyerID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if buyerID == "" {
+		return nil, gateway.ErrInvalidOrderBuyerID
+	}
+	result, err := s.client.AcceptDelivery(ctx, gateway.AcceptDeliveryRequest{
+		OrderID:     orderID,
+		BuyerID:     buyerID,
+		RequestedAt: time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		log.Error("failed to accept order delivery",
+			logging.Operation("order.accept_delivery"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("order_id", orderID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *orderService) RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	buyerID := strings.TrimSpace(req.BuyerID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if buyerID == "" {
+		return nil, gateway.ErrInvalidOrderBuyerID
+	}
+	if strings.TrimSpace(req.Reason) == "" {
+		return nil, gateway.ErrInvalidOrderReason
+	}
+	result, err := s.client.RequestRevision(ctx, gateway.RequestRevisionRequest{
+		OrderID:     orderID,
+		BuyerID:     buyerID,
+		Reason:      strings.TrimSpace(req.Reason),
+		RequestedAt: time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		log.Error("failed to request order revision",
+			logging.Operation("order.request_revision"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("order_id", orderID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *orderService) OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	buyerID := strings.TrimSpace(req.BuyerID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if buyerID == "" {
+		return nil, gateway.ErrInvalidOrderBuyerID
+	}
+	if strings.TrimSpace(req.Reason) == "" {
+		return nil, gateway.ErrInvalidOrderReason
+	}
+	result, err := s.client.OpenDispute(ctx, gateway.OpenDisputeRequest{
+		OrderID:     orderID,
+		BuyerID:     buyerID,
+		Reason:      strings.TrimSpace(req.Reason),
+		RequestedAt: time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		log.Error("failed to open order dispute",
+			logging.Operation("order.open_dispute"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("order_id", orderID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	return result, nil
+}
+
 func (s *onboardingService) StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error) {
 	log := logging.WithContext(ctx, s.log)
 	userID := strings.TrimSpace(req.UserID)

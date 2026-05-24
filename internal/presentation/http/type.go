@@ -51,6 +51,11 @@ type GigHandler interface {
 type OrderHandler interface {
 	RegisterRoutes(router fiber.Router)
 	HandleCreateOrder(c *fiber.Ctx) error
+	HandleConfirmOrder(c *fiber.Ctx) error
+	HandleDeliverOrder(c *fiber.Ctx) error
+	HandleAcceptDelivery(c *fiber.Ctx) error
+	HandleRequestRevision(c *fiber.Ctx) error
+	HandleOpenDispute(c *fiber.Ctx) error
 }
 
 // PaymentOnboardingService aliases the onboarding application boundary.
