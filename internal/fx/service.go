@@ -13,6 +13,7 @@ var ServiceModule = fx.Options(
 	fx.Provide(ProvideGigService),
 	fx.Provide(ProvideOrderService),
 	fx.Provide(ProvidePaymentOnboardingService),
+	fx.Provide(ProvideReviewService),
 )
 
 // ProvideRegistrationService constructs the registration application service.
@@ -46,4 +47,12 @@ func ProvidePaymentOnboardingService(
 	lg logging.Logger,
 ) (service.PaymentOnboardingService, error) {
 	return service.NewPaymentOnboarding(client, lg)
+}
+
+// ProvideReviewService constructs the review application service.
+func ProvideReviewService(
+	client service.ReviewClient,
+	lg logging.Logger,
+) (service.ReviewService, error) {
+	return service.NewReview(client, lg)
 }

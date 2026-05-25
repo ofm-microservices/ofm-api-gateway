@@ -81,6 +81,12 @@ type OrderCheckoutClient interface {
 	Close() error
 }
 
+// ReviewClient is the outbound gRPC boundary for review-service.
+type ReviewClient interface {
+	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+	Close() error
+}
+
 // OrderService validates public create-order requests and delegates to the
 // saga boundary.
 type OrderService interface {
@@ -94,6 +100,11 @@ type OrderService interface {
 	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
 	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
 	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
+}
+
+// ReviewService validates public review requests and delegates to review-service.
+type ReviewService interface {
+	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
 }
 
 // PaymentOnboardingService validates public freelancer onboarding requests and

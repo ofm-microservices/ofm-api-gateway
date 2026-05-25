@@ -3,8 +3,7 @@ package appfx
 import (
 	"api-gateway/config"
 	service "api-gateway/internal/application"
-	paymentgrpc "api-gateway/internal/presentation/grpc"
-	registrationgrpc "api-gateway/internal/presentation/grpc"
+	grpcclient "api-gateway/internal/presentation/grpc"
 	"context"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 
@@ -18,6 +17,7 @@ var MessagingModule = fx.Options(
 	fx.Provide(ProvideGigPublisher),
 	fx.Provide(ProvideOrderPublisher),
 	fx.Provide(ProvidePaymentOnboardingPublisher),
+	fx.Provide(ProvideReviewClient),
 )
 
 // ProvideRegistrationPublisher constructs the saga client and wires its
@@ -27,7 +27,7 @@ func ProvideRegistrationPublisher(
 	cfg *config.Config,
 	lg logging.Logger,
 ) (service.RegistrationPublisher, error) {
-	client, err := registrationgrpc.NewClient(cfg.RegistrationSaga, lg)
+	client, err := grpcclient.NewClient(cfg.RegistrationSaga, lg)
 	if err != nil {
 		lg.Error("connect registration saga grpc failed", logging.Err(err))
 		return nil, err
@@ -50,7 +50,7 @@ func ProvideTokenIssuer(
 	cfg *config.Config,
 	lg logging.Logger,
 ) (service.TokenIssuer, error) {
-	client, err := registrationgrpc.NewAuthClient(cfg.AuthService, lg)
+	client, err := grpcclient.NewAuthClient(cfg.AuthService, lg)
 	if err != nil {
 		lg.Error("connect auth service grpc failed", logging.Err(err))
 		return nil, err
@@ -73,7 +73,7 @@ func ProvideGigPublisher(
 	cfg *config.Config,
 	lg logging.Logger,
 ) (service.GigPublisher, error) {
-	client, err := registrationgrpc.NewGigClient(cfg.GigService, lg)
+	client, err := grpcclient.NewGigClient(cfg.GigService, lg)
 	if err != nil {
 		lg.Error("connect gig service grpc failed", logging.Err(err))
 		return nil, err
@@ -96,7 +96,7 @@ func ProvideOrderPublisher(
 	cfg *config.Config,
 	lg logging.Logger,
 ) (service.OrderCheckoutClient, error) {
-	client, err := paymentgrpc.NewOrderCheckoutClient(cfg.OrderSaga, lg)
+	client, err := grpcclient.NewOrderCheckoutClient(cfg.OrderSaga, lg)
 	if err != nil {
 		lg.Error("connect order saga grpc failed", logging.Err(err))
 		return nil, err
@@ -119,9 +119,31 @@ func ProvidePaymentOnboardingPublisher(
 	cfg *config.Config,
 	lg logging.Logger,
 ) (service.PaymentOnboardingPublisher, error) {
-	client, err := paymentgrpc.NewPaymentOnboardingClient(cfg.PaymentService, lg)
+	client, err := grpcclient.NewPaymentOnboardingClient(cfg.PaymentService, lg)
 	if err != nil {
 		lg.Error("connect payment service grpc failed", logging.Err(err))
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
+
+	return client, nil
+}
+
+// ProvideReviewClient constructs the review-service gRPC client used for buyer reviews.
+func ProvideReviewClient(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.ReviewClient, error) {
+	client, err := grpcclient.NewReviewClient(cfg.ReviewService, lg)
+	if err != nil {
+		lg.Error("connect review service grpc failed", logging.Err(err))
 		return nil, err
 	}
 
