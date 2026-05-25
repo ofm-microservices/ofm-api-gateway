@@ -10,6 +10,7 @@ import (
 	ordercheckoutv1 "github.com/ofm-microservices/ofm-common/proto/ordercheckout/v1"
 	paymentconnectv1 "github.com/ofm-microservices/ofm-common/proto/paymentconnect/v1"
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
+	reviewv1 "github.com/ofm-microservices/ofm-common/proto/review/v1"
 )
 
 // Logger aliases the shared logger contract used by the gRPC adapter.
@@ -80,6 +81,12 @@ type OrderCheckoutClient interface {
 	Close() error
 }
 
+// ReviewClient is the gateway-facing gRPC adapter for review-service.
+type ReviewClient interface {
+	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+	Close() error
+}
+
 // RegistrationMapper translates between gateway-domain signup types and the
 // shared registration gRPC contract.
 type RegistrationMapper interface {
@@ -147,6 +154,14 @@ type OrderCheckoutMapper interface {
 	ToError(err error) error
 }
 
+// ReviewMapper translates between gateway review types and the shared review
+// gRPC contract.
+type ReviewMapper interface {
+	ToCreateReviewRequest(req gateway.CreateReviewRequest, buyerID string) *reviewv1.CreateReviewRequest
+	ToCreateReviewResponse(res *reviewv1.CreateReviewResponse) *gateway.CreateReviewResult
+	ToError(err error) error
+}
+
 // RegistrationSagaConfig aliases the outbound saga gRPC client configuration.
 type RegistrationSagaConfig = config.RegistrationSagaConfig
 
@@ -161,3 +176,6 @@ type PaymentServiceConfig = config.PaymentServiceConfig
 
 // OrderSagaConfig aliases the outbound order-saga gRPC client configuration.
 type OrderSagaConfig = config.OrderSagaConfig
+
+// ReviewServiceConfig aliases the outbound review-service gRPC client configuration.
+type ReviewServiceConfig = config.ReviewServiceConfig

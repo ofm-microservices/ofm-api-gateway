@@ -28,6 +28,10 @@ type GigService = service.GigService
 // the HTTP layer.
 type OrderService = service.OrderService
 
+// ReviewService aliases the application review orchestration contract used by
+// the HTTP layer.
+type ReviewService = service.ReviewService
+
 // GigPrincipalResolver validates bearer tokens and extracts the gig owner id.
 type GigPrincipalResolver interface {
 	Middleware() fiber.Handler
@@ -56,6 +60,12 @@ type OrderHandler interface {
 	HandleAcceptDelivery(c *fiber.Ctx) error
 	HandleRequestRevision(c *fiber.Ctx) error
 	HandleOpenDispute(c *fiber.Ctx) error
+}
+
+// ReviewHandler exposes the buyer review HTTP routes owned by api-gateway.
+type ReviewHandler interface {
+	RegisterRoutes(router fiber.Router)
+	HandleCreateReview(c *fiber.Ctx) error
 }
 
 // PaymentOnboardingService aliases the onboarding application boundary.

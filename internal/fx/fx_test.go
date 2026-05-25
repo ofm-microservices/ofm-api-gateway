@@ -130,6 +130,31 @@ func (h *orderHandlerStub) HandleAcceptDelivery(*fiber.Ctx) error  { return nil 
 func (h *orderHandlerStub) HandleRequestRevision(*fiber.Ctx) error { return nil }
 func (h *orderHandlerStub) HandleOpenDispute(*fiber.Ctx) error     { return nil }
 
+type reviewHandlerStub struct {
+	registered bool
+}
+
+func (h *reviewHandlerStub) RegisterRoutes(router fiber.Router) {
+	h.registered = true
+	router.Post("/orders/:order_id/reviews", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusCreated)
+	})
+	router.Get("/orders/:order_id/review", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+	router.Get("/gigs/:gig_id/reviews", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+	router.Get("/users/:user_id/reviews", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+}
+
+func (h *reviewHandlerStub) HandleCreateReview(*fiber.Ctx) error         { return nil }
+func (h *reviewHandlerStub) HandleGetReviewByOrderID(*fiber.Ctx) error   { return nil }
+func (h *reviewHandlerStub) HandleListReviewsByGigID(*fiber.Ctx) error   { return nil }
+func (h *reviewHandlerStub) HandleListReviewsByBuyerID(*fiber.Ctx) error { return nil }
+
 type onboardingHandlerStub struct {
 	registered bool
 }
@@ -349,12 +374,14 @@ var _ = Describe("FX providers", func() {
 		handler := &authHandlerStub{}
 		gigHandler := &gigHandlerStub{}
 		orderHandler := &orderHandlerStub{}
+		reviewHandler := &reviewHandlerStub{}
 		onboardingHandler := &onboardingHandlerStub{}
-		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler, orderHandler, onboardingHandler)
+		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler, orderHandler, reviewHandler, onboardingHandler)
 
 		Expect(handler.registered).To(BeTrue())
 		Expect(gigHandler.registered).To(BeTrue())
 		Expect(orderHandler.registered).To(BeTrue())
+		Expect(reviewHandler.registered).To(BeTrue())
 		Expect(onboardingHandler.registered).To(BeTrue())
 	})
 

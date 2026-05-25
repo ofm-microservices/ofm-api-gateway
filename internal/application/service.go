@@ -26,6 +26,11 @@ type onboardingService struct {
 	log    Logger
 }
 
+type reviewService struct {
+	client ReviewClient
+	log    Logger
+}
+
 // New constructs the application service responsible for starting
 // registrations through the saga boundary.
 func New(client RegistrationPublisher, tokens TokenIssuer, log Logger) (RegistrationService, error) {
@@ -75,6 +80,21 @@ func NewPaymentOnboarding(client PaymentOnboardingPublisher, log Logger) (Paymen
 	return &onboardingService{
 		client: client,
 		log:    log.With(logging.String("module", "onboarding-application")),
+	}, nil
+}
+
+// NewReview constructs the application service responsible for buyer review submissions.
+func NewReview(client ReviewClient, log Logger) (ReviewService, error) {
+	if client == nil {
+		return nil, ErrNilReviewClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &reviewService{
+		client: client,
+		log:    log.With(logging.String("module", "review-application")),
 	}, nil
 }
 
@@ -471,6 +491,29 @@ func (s *onboardingService) StartFreelancerOnboarding(ctx context.Context, req g
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s *reviewService) CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error) {
+	if strings.TrimSpace(req.OrderID) == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	content := strings.TrimSpace(req.Content)
+	if content == "" {
+		return nil, gateway.ErrInvalidReviewContent
+	}
+	if strings.TrimSpace(req.BuyerID) == "" {
+		return nil, gateway.ErrInvalidOrderBuyerID
+	}
+	res, err := s.client.CreateReview(ctx, gateway.CreateReviewRequest{
+		OrderID:     strings.TrimSpace(req.OrderID),
+		BuyerID:     strings.TrimSpace(req.BuyerID),
+		Content:     content,
+		RequestedAt: strings.TrimSpace(req.RequestedAt),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func validRealtimeConnectionID(id string) bool {
