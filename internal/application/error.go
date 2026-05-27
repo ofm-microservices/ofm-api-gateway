@@ -8,6 +8,7 @@ var (
 	ErrNilGigClient               = errors.New("gig client is nil")
 	ErrNilOrderClient             = errors.New("order client is nil")
 	ErrNilReviewClient            = errors.New("review client is nil")
+	ErrNilSearchClient            = errors.New("search client is nil")
 	ErrNilPaymentOnboardingClient = errors.New("payment onboarding client is nil")
 	ErrNilLogger                  = errors.New("logger is nil")
 )

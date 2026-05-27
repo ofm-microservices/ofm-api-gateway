@@ -11,6 +11,7 @@ import (
 	paymentconnectv1 "github.com/ofm-microservices/ofm-common/proto/paymentconnect/v1"
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 	reviewv1 "github.com/ofm-microservices/ofm-common/proto/review/v1"
+	searchv1 "github.com/ofm-microservices/ofm-common/proto/search/v1"
 )
 
 // Logger aliases the shared logger contract used by the gRPC adapter.
@@ -84,6 +85,12 @@ type OrderCheckoutClient interface {
 // ReviewClient is the gateway-facing gRPC adapter for review-service.
 type ReviewClient interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+	Close() error
+}
+
+// SearchClient is the gateway-facing gRPC adapter for search-service.
+type SearchClient interface {
+	Search(ctx context.Context, req gateway.SearchRequest) (*gateway.SearchResponse, error)
 	Close() error
 }
 
@@ -162,6 +169,13 @@ type ReviewMapper interface {
 	ToError(err error) error
 }
 
+// SearchMapper translates between gateway search types and the shared search
+// gRPC contract.
+type SearchMapper interface {
+	ToSearchRequest(req gateway.SearchRequest) *searchv1.SearchRequest
+	ToSearchResponse(res *searchv1.SearchResponse) *gateway.SearchResponse
+}
+
 // RegistrationSagaConfig aliases the outbound saga gRPC client configuration.
 type RegistrationSagaConfig = config.RegistrationSagaConfig
 
@@ -179,3 +193,6 @@ type OrderSagaConfig = config.OrderSagaConfig
 
 // ReviewServiceConfig aliases the outbound review-service gRPC client configuration.
 type ReviewServiceConfig = config.ReviewServiceConfig
+
+// SearchServiceConfig aliases the outbound search-service gRPC client configuration.
+type SearchServiceConfig = config.SearchServiceConfig

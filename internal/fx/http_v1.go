@@ -15,6 +15,7 @@ var HTTPV1Module = fx.Options(
 	fx.Provide(ProvideHTTPV1GigHandler),
 	fx.Provide(ProvideHTTPV1OrderHandler),
 	fx.Provide(ProvideHTTPV1ReviewHandler),
+	fx.Provide(ProvideHTTPV1SearchHandler),
 	fx.Provide(ProvideHTTPV1OnboardingHandler),
 	fx.Invoke(InvokeRegisterHTTPV1Routes),
 )
@@ -54,6 +55,14 @@ func ProvideHTTPV1ReviewHandler(
 	return httpserver.NewReviewHandler(service, cfg.JWT.AccessSecret, lg)
 }
 
+// ProvideHTTPV1SearchHandler constructs the public search HTTP handler.
+func ProvideHTTPV1SearchHandler(
+	service httpserver.SearchService,
+	lg logging.Logger,
+) (httpserver.SearchHandler, error) {
+	return httpserver.NewSearchHandler(service, lg)
+}
+
 // ProvideHTTPV1OnboardingHandler constructs the freelancer onboarding handler.
 func ProvideHTTPV1OnboardingHandler(
 	cfg *config.Config,
@@ -64,7 +73,9 @@ func ProvideHTTPV1OnboardingHandler(
 }
 
 // InvokeRegisterHTTPV1Routes registers versioned HTTP routes on the server.
-func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, reviewHandler httpserver.ReviewHandler, onboardingHandler httpserver.OnboardingHandler) {
+func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, reviewHandler httpserver.ReviewHandler, searchHandler httpserver.SearchHandler, onboardingHandler httpserver.OnboardingHandler) {
+	srv.App().Get("/v1/search", searchHandler.HandleSearch)
+
 	v1 := srv.App().Group("/v1")
 	authHandler.RegisterRoutes(v1)
 	gigHandler.RegisterRoutes(v1)

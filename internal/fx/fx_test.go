@@ -155,6 +155,17 @@ func (h *reviewHandlerStub) HandleGetReviewByOrderID(*fiber.Ctx) error   { retur
 func (h *reviewHandlerStub) HandleListReviewsByGigID(*fiber.Ctx) error   { return nil }
 func (h *reviewHandlerStub) HandleListReviewsByBuyerID(*fiber.Ctx) error { return nil }
 
+type searchHandlerStub struct {
+	registered bool
+}
+
+func (h *searchHandlerStub) RegisterRoutes(router fiber.Router) {
+	h.registered = true
+	router.Get("/search", h.HandleSearch)
+}
+
+func (h *searchHandlerStub) HandleSearch(*fiber.Ctx) error { return nil }
+
 type onboardingHandlerStub struct {
 	registered bool
 }
@@ -375,8 +386,9 @@ var _ = Describe("FX providers", func() {
 		gigHandler := &gigHandlerStub{}
 		orderHandler := &orderHandlerStub{}
 		reviewHandler := &reviewHandlerStub{}
+		searchHandler := &searchHandlerStub{}
 		onboardingHandler := &onboardingHandlerStub{}
-		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler, orderHandler, reviewHandler, onboardingHandler)
+		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler, orderHandler, reviewHandler, searchHandler, onboardingHandler)
 
 		Expect(handler.registered).To(BeTrue())
 		Expect(gigHandler.registered).To(BeTrue())

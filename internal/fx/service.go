@@ -14,6 +14,7 @@ var ServiceModule = fx.Options(
 	fx.Provide(ProvideOrderService),
 	fx.Provide(ProvidePaymentOnboardingService),
 	fx.Provide(ProvideReviewService),
+	fx.Provide(ProvideSearchService),
 )
 
 // ProvideRegistrationService constructs the registration application service.
@@ -55,4 +56,12 @@ func ProvideReviewService(
 	lg logging.Logger,
 ) (service.ReviewService, error) {
 	return service.NewReview(client, lg)
+}
+
+// ProvideSearchService constructs the search application service.
+func ProvideSearchService(
+	client service.SearchClient,
+	lg logging.Logger,
+) (service.SearchService, error) {
+	return service.NewSearch(client, lg)
 }
