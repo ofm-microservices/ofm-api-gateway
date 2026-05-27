@@ -87,6 +87,12 @@ type ReviewClient interface {
 	Close() error
 }
 
+// SearchClient is the outbound gRPC boundary for search-service.
+type SearchClient interface {
+	Search(ctx context.Context, req gateway.SearchRequest) (*gateway.SearchResponse, error)
+	Close() error
+}
+
 // OrderService validates public create-order requests and delegates to the
 // saga boundary.
 type OrderService interface {
@@ -105,6 +111,11 @@ type OrderService interface {
 // ReviewService validates public review requests and delegates to review-service.
 type ReviewService interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+}
+
+// SearchService validates public search requests and delegates to search-service.
+type SearchService interface {
+	Search(ctx context.Context, req gateway.SearchRequest) (*gateway.SearchResponse, error)
 }
 
 // PaymentOnboardingService validates public freelancer onboarding requests and

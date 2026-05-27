@@ -31,6 +31,11 @@ type reviewService struct {
 	log    Logger
 }
 
+type searchService struct {
+	client SearchClient
+	log    Logger
+}
+
 // New constructs the application service responsible for starting
 // registrations through the saga boundary.
 func New(client RegistrationPublisher, tokens TokenIssuer, log Logger) (RegistrationService, error) {
@@ -151,6 +156,21 @@ func (s *registrationService) SignUp(ctx context.Context, req gateway.SignUpRequ
 		logging.String("session_id", result.SessionID),
 	)
 	return result, nil
+}
+
+// NewSearch constructs the application service responsible for public gig search.
+func NewSearch(client SearchClient, log Logger) (SearchService, error) {
+	if client == nil {
+		return nil, ErrNilSearchClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &searchService{
+		client: client,
+		log:    log.With(logging.String("module", "search-application")),
+	}, nil
 }
 
 func (s *registrationService) VerifyEmail(ctx context.Context, req gateway.VerifyEmailRequest) (*gateway.VerifyEmailResult, error) {
@@ -514,6 +534,10 @@ func (s *reviewService) CreateReview(ctx context.Context, req gateway.CreateRevi
 		return nil, err
 	}
 	return res, nil
+}
+
+func (s *searchService) Search(ctx context.Context, req gateway.SearchRequest) (*gateway.SearchResponse, error) {
+	return s.client.Search(ctx, req)
 }
 
 func validRealtimeConnectionID(id string) bool {

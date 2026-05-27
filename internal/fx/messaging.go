@@ -18,6 +18,7 @@ var MessagingModule = fx.Options(
 	fx.Provide(ProvideOrderPublisher),
 	fx.Provide(ProvidePaymentOnboardingPublisher),
 	fx.Provide(ProvideReviewClient),
+	fx.Provide(ProvideSearchClient),
 )
 
 // ProvideRegistrationPublisher constructs the saga client and wires its
@@ -144,6 +145,28 @@ func ProvideReviewClient(
 	client, err := grpcclient.NewReviewClient(cfg.ReviewService, lg)
 	if err != nil {
 		lg.Error("connect review service grpc failed", logging.Err(err))
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
+
+	return client, nil
+}
+
+// ProvideSearchClient constructs the search-service gRPC client used for public search.
+func ProvideSearchClient(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.SearchClient, error) {
+	client, err := grpcclient.NewSearchClient(cfg.SearchService, lg)
+	if err != nil {
+		lg.Error("connect search service grpc failed", logging.Err(err))
 		return nil, err
 	}
 
