@@ -18,6 +18,7 @@ func (m *reviewMapper) ToCreateReviewRequest(req gateway.CreateReviewRequest, bu
 		OrderId:     strings.TrimSpace(req.OrderID),
 		BuyerUserId: strings.TrimSpace(buyerID),
 		Content:     strings.TrimSpace(req.Content),
+		Rating:      req.Rating,
 		RequestedAt: strings.TrimSpace(req.RequestedAt),
 	}
 }
@@ -33,6 +34,7 @@ func (m *reviewMapper) ToCreateReviewResponse(res *reviewv1.CreateReviewResponse
 		GigID:     review.GetGigId(),
 		BuyerID:   review.GetBuyerUserId(),
 		Content:   review.GetContent(),
+		Rating:    review.GetRating(),
 		CreatedAt: review.GetCreatedAt(),
 	}
 }
