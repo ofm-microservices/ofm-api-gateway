@@ -4,6 +4,7 @@ package gateway
 type CreateReviewRequest struct {
 	OrderID     string `json:"order_id"`
 	Content     string `json:"content"`
+	Rating      int32  `json:"rating"`
 	BuyerID     string `json:"-"`
 	RequestedAt string `json:"requested_at,omitempty"`
 }
@@ -15,5 +16,6 @@ type CreateReviewResult struct {
 	GigID     string `json:"gig_id"`
 	BuyerID   string `json:"buyer_id"`
 	Content   string `json:"content"`
+	Rating    int32  `json:"rating"`
 	CreatedAt string `json:"created_at"`
 }

@@ -285,7 +285,7 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 		RealtimeConnectionID: connectionID,
 		GigID:                gigID,
 		PackageID:            packageID,
-		IdempotencyKey:       uuid.NewString(),
+		IdempotencyKey:       uuid.Must(uuid.NewV7()).String(),
 		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
@@ -303,7 +303,7 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 		result = &gateway.CreateOrderResult{}
 	}
 	if strings.TrimSpace(result.SagaID) == "" {
-		result.SagaID = uuid.NewString()
+		result.SagaID = uuid.Must(uuid.NewV7()).String()
 	}
 	if strings.TrimSpace(result.Status) == "" {
 		result.Status = "requirements_pending"
@@ -521,6 +521,9 @@ func (s *reviewService) CreateReview(ctx context.Context, req gateway.CreateRevi
 	if content == "" {
 		return nil, gateway.ErrInvalidReviewContent
 	}
+	if req.Rating < 1 || req.Rating > 5 {
+		return nil, gateway.ErrInvalidReviewContent
+	}
 	if strings.TrimSpace(req.BuyerID) == "" {
 		return nil, gateway.ErrInvalidOrderBuyerID
 	}
@@ -528,6 +531,7 @@ func (s *reviewService) CreateReview(ctx context.Context, req gateway.CreateRevi
 		OrderID:     strings.TrimSpace(req.OrderID),
 		BuyerID:     strings.TrimSpace(req.BuyerID),
 		Content:     content,
+		Rating:      req.Rating,
 		RequestedAt: strings.TrimSpace(req.RequestedAt),
 	})
 	if err != nil {
