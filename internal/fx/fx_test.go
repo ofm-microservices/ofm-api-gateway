@@ -56,6 +56,14 @@ func (tokenIssuerStub) IssueRegistrationTokens(context.Context, string) (*gatewa
 
 func (tokenIssuerStub) Close() error { return nil }
 
+type authSessionServiceStub struct{}
+
+func (authSessionServiceStub) SignIn(context.Context, gateway.SignInRequest) (*gateway.AuthTokensResult, error) {
+	return &gateway.AuthTokensResult{TokenType: "Bearer"}, nil
+}
+
+func (authSessionServiceStub) Close() error { return nil }
+
 type registrationServiceStub struct{}
 
 func (registrationServiceStub) SignUp(context.Context, gateway.SignUpRequest) (*gateway.SignUpResult, error) {
@@ -79,9 +87,16 @@ func (h *authHandlerStub) RegisterRoutes(router fiber.Router) {
 	router.Post("/auth/sign-up", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusAccepted)
 	})
+	router.Post("/auth/sign-in", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
 }
 
 func (h *authHandlerStub) HandleSignUp(*fiber.Ctx) error {
+	return nil
+}
+
+func (h *authHandlerStub) HandleSignIn(*fiber.Ctx) error {
 	return nil
 }
 
@@ -404,7 +419,7 @@ var _ = Describe("FX providers", func() {
 	})
 
 	It("constructs the v1 auth handler", func() {
-		handler, err := ProvideHTTPV1AuthHandler(registrationServiceStub{}, lg)
+		handler, err := ProvideHTTPV1AuthHandler(registrationServiceStub{}, authSessionServiceStub{}, lg)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(handler).NotTo(BeNil())

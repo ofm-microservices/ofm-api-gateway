@@ -20,7 +20,13 @@ type RegistrationPublisher interface {
 // TokenIssuer is the outbound auth-service boundary for final token exchange.
 type TokenIssuer interface {
 	// IssueRegistrationTokens creates login tokens after saga completion.
-	IssueRegistrationTokens(ctx context.Context, userID string) (*gateway.CompleteRegistrationResult, error)
+	IssueRegistrationTokens(ctx context.Context, userID string) (*gateway.AuthTokensResult, error)
+	Close() error
+}
+
+// AuthSessionClient is the outbound auth-service boundary used for sign-in.
+type AuthSessionClient interface {
+	SignIn(ctx context.Context, req gateway.SignInRequest) (*gateway.AuthTokensResult, error)
 	Close() error
 }
 
@@ -32,7 +38,12 @@ type RegistrationService interface {
 	// VerifyEmail accepts the emailed code and starts saga completion.
 	VerifyEmail(ctx context.Context, req gateway.VerifyEmailRequest) (*gateway.VerifyEmailResult, error)
 	// CompleteRegistration exchanges a completed saga for auth-owned tokens.
-	CompleteRegistration(ctx context.Context, req gateway.CompleteRegistrationRequest) (*gateway.CompleteRegistrationResult, error)
+	CompleteRegistration(ctx context.Context, req gateway.CompleteRegistrationRequest) (*gateway.AuthTokensResult, error)
+}
+
+// AuthSessionService validates public sign-in requests and delegates to auth-service.
+type AuthSessionService interface {
+	SignIn(ctx context.Context, req gateway.SignInRequest) (*gateway.AuthTokensResult, error)
 }
 
 // GigService validates the public gig draft workflow and delegates

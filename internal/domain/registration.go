@@ -44,14 +44,25 @@ type CompleteRegistrationRequest struct {
 	ClientID  string `json:"client_id"`
 }
 
-// CompleteRegistrationResult is the public token response returned after saga
-// completion.
-type CompleteRegistrationResult struct {
+// AuthTokensResult is the public access/refresh token payload returned by the
+// auth endpoints.
+type AuthTokensResult struct {
 	UserID       string `json:"user_id"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int64  `json:"expires_in"`
+}
+
+// CompleteRegistrationResult is retained as a compatibility alias for the
+// registration flow.
+type CompleteRegistrationResult = AuthTokensResult
+
+// SignInRequest is the public gateway payload used to sign into an existing
+// auth credential.
+type SignInRequest struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
 }
 
 // RegistrationStatus is the gateway view of saga completion state.

@@ -14,6 +14,7 @@ import (
 var MessagingModule = fx.Options(
 	fx.Provide(ProvideRegistrationPublisher),
 	fx.Provide(ProvideTokenIssuer),
+	fx.Provide(ProvideAuthSessionClient),
 	fx.Provide(ProvideGigPublisher),
 	fx.Provide(ProvideOrderPublisher),
 	fx.Provide(ProvidePaymentOnboardingPublisher),
@@ -55,6 +56,28 @@ func ProvideTokenIssuer(
 	client, err := grpcclient.NewAuthClient(cfg.AuthService, lg)
 	if err != nil {
 		lg.Error("connect auth service grpc failed", logging.Err(err))
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
+
+	return client, nil
+}
+
+// ProvideAuthSessionClient constructs the auth-service client used for sign-in.
+func ProvideAuthSessionClient(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.AuthSessionClient, error) {
+	client, err := grpcclient.NewAuthSessionClient(cfg.AuthService, lg)
+	if err != nil {
+		lg.Error("connect auth session grpc failed", logging.Err(err))
 		return nil, err
 	}
 
