@@ -61,6 +61,16 @@ func (c *authSessionClient) Refresh(ctx context.Context, req gateway.RefreshToke
 	return c.mapr.ToRefreshResult(response), nil
 }
 
+// SignOut asks auth-service to revoke a refresh token and end the session.
+func (c *authSessionClient) SignOut(ctx context.Context, req gateway.SignOutRequest) error {
+	_, err := c.cl.SignOut(ctx, c.mapr.ToSignOutRequest(req))
+	if err != nil {
+		return c.mapr.ToSignOutError(err)
+	}
+
+	return nil
+}
+
 // Close closes the underlying auth-session gRPC client connection.
 func (c *authSessionClient) Close() error {
 	if c == nil || c.conn == nil {

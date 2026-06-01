@@ -71,6 +71,10 @@ type RefreshTokensRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// SignOutRequest is the public gateway payload used to revoke a refresh token
+// and end the current session.
+type SignOutRequest = RefreshTokensRequest
+
 // RegistrationStatus is the gateway view of saga completion state.
 type RegistrationStatus struct {
 	SessionID string

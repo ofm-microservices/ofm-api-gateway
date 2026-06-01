@@ -324,6 +324,28 @@ func (s *authSessionService) Refresh(ctx context.Context, req gateway.RefreshTok
 	return result, nil
 }
 
+func (s *authSessionService) SignOut(ctx context.Context, req gateway.SignOutRequest) error {
+	log := logging.WithContext(ctx, s.log)
+	refreshToken := strings.TrimSpace(req.RefreshToken)
+	if refreshToken == "" {
+		return gateway.ErrInvalidRefreshToken
+	}
+
+	if err := s.client.SignOut(ctx, gateway.SignOutRequest{
+		RefreshToken: refreshToken,
+	}); err != nil {
+		log.Error("failed to sign out",
+			logging.Operation("auth.sign_out"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
+		return err
+	}
+
+	return nil
+}
+
 func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error) {
 	log := logging.WithContext(ctx, s.log)
 	buyerID := strings.TrimSpace(req.BuyerID)
