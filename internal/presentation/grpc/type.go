@@ -55,6 +55,7 @@ type AuthClient interface {
 // AuthSessionClient is the gateway-facing gRPC adapter for sign-in.
 type AuthSessionClient interface {
 	SignIn(ctx context.Context, req gateway.SignInRequest) (*AuthTokensResult, error)
+	Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*AuthTokensResult, error)
 	Close() error
 }
 
@@ -133,8 +134,11 @@ type RegistrationMapper interface {
 // auth-session gRPC contract.
 type AuthSessionMapper interface {
 	ToSignInRequest(req gateway.SignInRequest) *authv1.SignInRequest
-	ToAuthTokensResult(res *authv1.AuthTokensResponse) *AuthTokensResult
+	ToRefreshRequest(req gateway.RefreshTokensRequest) *authv1.RefreshRequest
+	ToSignInResult(res *authv1.SignInResponse) *AuthTokensResult
+	ToRefreshResult(res *authv1.RefreshResponse) *AuthTokensResult
 	ToError(err error) error
+	ToRefreshError(err error) error
 }
 
 // GigMapper translates between gateway gig types and the shared gig gRPC

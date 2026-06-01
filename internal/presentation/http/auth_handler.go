@@ -40,6 +40,7 @@ func (h *authHandler) RegisterRoutes(router fiber.Router) {
 
 	auth.Post("/sign-up", h.HandleSignUp)
 	auth.Post("/sign-in", h.HandleSignIn)
+	auth.Post("/refresh", h.HandleRefresh)
 	auth.Post("/sign-up/verify-email", h.HandleVerifyEmail)
 	auth.Post("/sign-up/complete", h.HandleCompleteRegistration)
 }
@@ -130,6 +131,27 @@ func (h *authHandler) HandleSignIn(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
+// HandleRefresh rotates a refresh token and relays the new token pair.
+func (h *authHandler) HandleRefresh(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+	var req gateway.RefreshTokensRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.session.Refresh(c.UserContext(), req)
+	if err != nil {
+		return h.MapRefreshError(c, err)
+	}
+
+	log.Info("refresh request accepted",
+		logging.Operation("http.auth.refresh"),
+		logging.DurationMS(time.Since(started)),
+	)
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
 // MapSignUpError translates signup failures into stable HTTP responses.
 func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
 	log := logging.WithContext(c.UserContext(), h.log)
@@ -184,6 +206,25 @@ func (h *authHandler) MapSignInError(c *fiber.Ctx, err error) error {
 	default:
 		log.Error("request failed",
 			logging.Operation("http.auth.sign_in_error"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+}
+
+// MapRefreshError translates refresh failures into stable HTTP responses.
+func (h *authHandler) MapRefreshError(c *fiber.Ctx, err error) error {
+	log := logging.WithContext(c.UserContext(), h.log)
+	switch err {
+	case gateway.ErrInvalidRefreshToken:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid refresh token"})
+	case gateway.ErrInvalidCredentials:
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid refresh token"})
+	default:
+		log.Error("request failed",
+			logging.Operation("http.auth.refresh_error"),
 			logging.Attempt(1),
 			logging.Retryable(false),
 			logging.Err(err),

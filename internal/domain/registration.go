@@ -65,6 +65,12 @@ type SignInRequest struct {
 	Password   string `json:"password"`
 }
 
+// RefreshTokensRequest is the public gateway payload used to rotate a refresh
+// token.
+type RefreshTokensRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 // RegistrationStatus is the gateway view of saga completion state.
 type RegistrationStatus struct {
 	SessionID string

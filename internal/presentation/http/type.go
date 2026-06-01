@@ -20,6 +20,7 @@ type AuthHandler interface {
 	RegisterRoutes(router fiber.Router)
 	HandleSignUp(c *fiber.Ctx) error
 	HandleSignIn(c *fiber.Ctx) error
+	HandleRefresh(c *fiber.Ctx) error
 	HandleVerifyEmail(c *fiber.Ctx) error
 	HandleCompleteRegistration(c *fiber.Ctx) error
 }

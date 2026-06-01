@@ -27,6 +27,7 @@ type TokenIssuer interface {
 // AuthSessionClient is the outbound auth-service boundary used for sign-in.
 type AuthSessionClient interface {
 	SignIn(ctx context.Context, req gateway.SignInRequest) (*gateway.AuthTokensResult, error)
+	Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*gateway.AuthTokensResult, error)
 	Close() error
 }
 
@@ -44,6 +45,7 @@ type RegistrationService interface {
 // AuthSessionService validates public sign-in requests and delegates to auth-service.
 type AuthSessionService interface {
 	SignIn(ctx context.Context, req gateway.SignInRequest) (*gateway.AuthTokensResult, error)
+	Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*gateway.AuthTokensResult, error)
 }
 
 // GigService validates the public gig draft workflow and delegates
