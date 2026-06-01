@@ -28,6 +28,7 @@ type gigServiceStub struct {
 	questionsReq gateway.ReplaceGigQuestionsRequest
 	mediaReq     gateway.ReplaceGigMediaRequest
 	draftReq     gateway.GetGigDraftRequest
+	slugReq      gateway.GetGigBySlugRequest
 	publishReq   gateway.PublishGigRequest
 
 	createRes    *gateway.Gig
@@ -36,6 +37,7 @@ type gigServiceStub struct {
 	questionsRes *gateway.Gig
 	mediaRes     *gateway.Gig
 	draftRes     *gateway.Gig
+	slugRes      *gateway.Gig
 	publishRes   *gateway.Gig
 
 	err error
@@ -69,6 +71,11 @@ func (s *gigServiceStub) ReplaceMedia(_ context.Context, req gateway.ReplaceGigM
 func (s *gigServiceStub) GetDraft(_ context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error) {
 	s.draftReq = req
 	return s.draftRes, s.err
+}
+
+func (s *gigServiceStub) GetBySlug(_ context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
+	s.slugReq = req
+	return s.slugRes, s.err
 }
 
 func (s *gigServiceStub) Publish(_ context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
@@ -185,6 +192,22 @@ var _ = Describe("GigHandler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(fiber.StatusAccepted))
 		Expect(service.publishReq.FreelancerID).To(Equal("freelancer-1"))
+	})
+
+	It("loads a public gig by slug without auth", func() {
+		service.slugRes = &gateway.Gig{GigID: "019e706c-616e-7473-9c1a-838c33b75013", Slug: "my-gig-019e706c-616e-7473-9c1a-838c33b75013"}
+		resp, err := app.Test(gigJSONRequest("GET", "/v1/users/alex/gigs/my-gig-019e706c-616e-7473-9c1a-838c33b75013?cursor=abc", "", ""), -1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(fiber.StatusOK))
+		Expect(service.slugReq.Username).To(Equal("alex"))
+		Expect(service.slugReq.Slug).To(Equal("my-gig-019e706c-616e-7473-9c1a-838c33b75013"))
+		Expect(service.slugReq.Cursor).To(Equal("abc"))
+	})
+
+	It("returns not found for malformed public gig slugs", func() {
+		resp, err := app.Test(gigJSONRequest("GET", "/v1/users/alex/gigs/ss", "", ""), -1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(fiber.StatusNotFound))
 	})
 
 	It("rejects requests without a bearer token", func() {

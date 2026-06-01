@@ -39,6 +39,79 @@ func (m *reviewMapper) ToCreateReviewResponse(res *reviewv1.CreateReviewResponse
 	}
 }
 
+func (m *reviewMapper) ToGetGigReviewsRequest(req gateway.GetGigReviewsRequest) *reviewv1.ListGigReviewsRequest {
+	return &reviewv1.ListGigReviewsRequest{
+		GigId:  strings.TrimSpace(req.GigID),
+		Cursor: strings.TrimSpace(req.Cursor),
+	}
+}
+
+func (m *reviewMapper) ToGetGigReviewsResponse(res *reviewv1.ListGigReviewsResponse) *gateway.GetGigReviewsResult {
+	if res == nil {
+		return &gateway.GetGigReviewsResult{}
+	}
+	out := &gateway.GetGigReviewsResult{
+		Reviews: &gateway.ReviewList{
+			Cursor:  res.GetCursor(),
+			HasMore: res.GetHasMore(),
+		},
+	}
+	if len(res.GetReviews()) > 0 {
+		out.Reviews.Items = make([]gateway.Review, 0, len(res.GetReviews()))
+		for _, item := range res.GetReviews() {
+			out.Reviews.Items = append(out.Reviews.Items, gateway.Review{
+				ReviewID:    item.GetReviewId(),
+				OrderID:     item.GetOrderId(),
+				GigID:       item.GetGigId(),
+				BuyerUserID: item.GetBuyerUserId(),
+				Content:     item.GetContent(),
+				Rating:      item.GetRating(),
+				CreatedAt:   item.GetCreatedAt(),
+				Author:      toReviewAuthor(item.GetAuthor()),
+			})
+		}
+	}
+	return out
+}
+
+func (m *reviewMapper) ToGetGigReviewsSummaryRequest(req gateway.GetGigReviewsSummaryRequest) *reviewv1.GetGigRatingSummaryRequest {
+	return &reviewv1.GetGigRatingSummaryRequest{GigId: strings.TrimSpace(req.GigID)}
+}
+
+func (m *reviewMapper) ToGetGigReviewsSummaryResponse(res *reviewv1.RatingSummary) *gateway.ReviewSummary {
+	if res == nil {
+		return nil
+	}
+	return &gateway.ReviewSummary{
+		RatingAvg:    res.GetRatingAvg(),
+		TotalReviews: res.GetTotalReviews(),
+		Stars5:       res.GetStars_5(),
+		Stars4:       res.GetStars_4(),
+		Stars3:       res.GetStars_3(),
+		Stars2:       res.GetStars_2(),
+		Stars1:       res.GetStars_1(),
+	}
+}
+
+func (m *reviewMapper) ToGetUserRatingSummaryByUsernameRequest(req gateway.GetUserRatingSummaryByUsernameRequest) *reviewv1.GetUserRatingSummaryByUsernameRequest {
+	return &reviewv1.GetUserRatingSummaryByUsernameRequest{Username: strings.TrimSpace(req.Username)}
+}
+
+func (m *reviewMapper) ToGetUserRatingSummaryByUsernameResponse(res *reviewv1.RatingSummary) *gateway.ReviewSummary {
+	if res == nil {
+		return nil
+	}
+	return &gateway.ReviewSummary{
+		RatingAvg:    res.GetRatingAvg(),
+		TotalReviews: res.GetTotalReviews(),
+		Stars5:       res.GetStars_5(),
+		Stars4:       res.GetStars_4(),
+		Stars3:       res.GetStars_3(),
+		Stars2:       res.GetStars_2(),
+		Stars1:       res.GetStars_1(),
+	}
+}
+
 func (m *reviewMapper) ToError(err error) error {
 	if err == nil {
 		return nil
@@ -54,5 +127,17 @@ func (m *reviewMapper) ToError(err error) error {
 		return gateway.ErrOrderNotAcceptable
 	default:
 		return err
+	}
+}
+
+func toReviewAuthor(res *reviewv1.ReviewAuthor) *gateway.ReviewAuthor {
+	if res == nil {
+		return nil
+	}
+	return &gateway.ReviewAuthor{
+		UserID:      res.GetUserId(),
+		Username:    res.GetUsername(),
+		DisplayName: res.GetDisplayName(),
+		AvatarURL:   res.GetAvatarUrl(),
 	}
 }

@@ -44,7 +44,14 @@ type GigService interface {
 	ReplaceQuestions(ctx context.Context, req gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error)
 	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
+	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
+}
+
+// UserClient is the outbound gRPC boundary for user-service.
+type UserClient interface {
+	GetDetailedUserByUsername(ctx context.Context, username string) (*gateway.User, error)
+	Close() error
 }
 
 // GigPublisher is the outbound boundary used to manage gig drafts in another
@@ -56,6 +63,7 @@ type GigPublisher interface {
 	ReplaceQuestions(ctx context.Context, req gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error)
 	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
+	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 }
 
@@ -84,6 +92,9 @@ type OrderCheckoutClient interface {
 // ReviewClient is the outbound gRPC boundary for review-service.
 type ReviewClient interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+	GetGigReviews(ctx context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error)
+	GetGigReviewsSummary(ctx context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error)
+	GetUserRatingSummaryByUsername(ctx context.Context, req gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error)
 	Close() error
 }
 
@@ -122,6 +133,11 @@ type SearchService interface {
 // delegates to payment-service.
 type PaymentOnboardingService interface {
 	StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error)
+}
+
+// PublicGigService resolves the public gig detail page with review enrichment.
+type PublicGigService interface {
+	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
 }
 
 // PaymentOnboardingPublisher is the outbound boundary used to start

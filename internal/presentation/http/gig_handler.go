@@ -3,9 +3,11 @@ package http
 import (
 	gateway "api-gateway/internal/domain"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	"io"
 	"mime/multipart"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -39,16 +41,18 @@ func NewGigHandler(service GigService, jwtSecret string, log logging.Logger) (Gi
 
 // RegisterRoutes mounts gig routes under the router it receives.
 func (h *gigHandler) RegisterRoutes(router fiber.Router) {
-	gigs := router.Group("/gigs")
-	gigs.Use(h.auth.Middleware())
+	gigs := router.Group("/users/:username/gigs")
+	gigs.Get("/*", h.HandleGetBySlug)
 
-	gigs.Post("/drafts", h.HandleCreateDraft)
-	gigs.Patch("/:gig_id/basic-info", h.HandleUpdateBasicInfo)
-	gigs.Put("/:gig_id/packages", h.HandleReplacePackages)
-	gigs.Put("/:gig_id/requirements", h.HandleReplaceQuestions)
-	gigs.Put("/:gig_id/media", h.HandleReplaceMedia)
-	gigs.Get("/:gig_id/draft", h.HandleGetDraft)
-	gigs.Post("/:gig_id/publish", h.HandlePublish)
+	authGigs := router.Group("/gigs")
+	authGigs.Use(h.auth.Middleware())
+	authGigs.Post("/drafts", h.HandleCreateDraft)
+	authGigs.Patch("/:gig_id/basic-info", h.HandleUpdateBasicInfo)
+	authGigs.Put("/:gig_id/packages", h.HandleReplacePackages)
+	authGigs.Put("/:gig_id/requirements", h.HandleReplaceQuestions)
+	authGigs.Put("/:gig_id/media", h.HandleReplaceMedia)
+	authGigs.Get("/:gig_id/draft", h.HandleGetDraft)
+	authGigs.Post("/:gig_id/publish", h.HandlePublish)
 }
 
 // HandleCreateDraft starts a new gig draft.
@@ -178,6 +182,27 @@ func (h *gigHandler) HandleGetDraft(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
+// HandleGetBySlug loads the public gig detail view by slug.
+func (h *gigHandler) HandleGetBySlug(c *fiber.Ctx) error {
+	path := strings.TrimSpace(c.Params("*"))
+	if path == "" {
+		return h.mapGigError(c, gateway.ErrGigNotFound)
+	}
+	if !strings.Contains(path, "-") || !hasValidGigIDSuffix(path) {
+		return h.mapGigError(c, gateway.ErrGigNotFound)
+	}
+	result, err := h.service.GetBySlug(c.UserContext(), gateway.GetGigBySlugRequest{
+		Username: c.Params("username"),
+		Slug:     path,
+		Cursor:   c.Query("cursor"),
+	})
+	if err != nil {
+		return h.mapGigError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
 // HandlePublish publishes a complete gig draft.
 func (h *gigHandler) HandlePublish(c *fiber.Ctx) error {
 	req := gateway.PublishGigRequest{
@@ -220,10 +245,24 @@ func (h *gigHandler) mapGigError(c *fiber.Ctx, err error) error {
 		errors.Is(err, gateway.ErrConnectOnboardingIncomplete),
 		errors.Is(err, gateway.ErrInvalidGigState):
 		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrInvalidGigSlug):
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrInvalidUsername):
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrUserNotFound):
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	default:
 		h.log.Error("request failed", logging.Err(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
 	}
+}
+
+func hasValidGigIDSuffix(path string) bool {
+	if len(path) < 36 {
+		return false
+	}
+	_, err := uuid.Parse(path[len(path)-36:])
+	return err == nil
 }
 
 func (h *gigHandler) readMediaUploads(c *fiber.Ctx) ([]gateway.GigMediaUpload, error) {

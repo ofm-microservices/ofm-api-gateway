@@ -49,6 +49,30 @@ func (c *reviewClient) CreateReview(ctx context.Context, req gateway.CreateRevie
 	return c.mapr.ToCreateReviewResponse(res), nil
 }
 
+func (c *reviewClient) GetGigReviews(ctx context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error) {
+	res, err := c.cl.ListGigReviews(ctx, c.mapr.ToGetGigReviewsRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToGetGigReviewsResponse(res), nil
+}
+
+func (c *reviewClient) GetGigReviewsSummary(ctx context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error) {
+	res, err := c.cl.GetGigRatingSummary(ctx, c.mapr.ToGetGigReviewsSummaryRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToGetGigReviewsSummaryResponse(res), nil
+}
+
+func (c *reviewClient) GetUserRatingSummaryByUsername(ctx context.Context, req gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error) {
+	res, err := c.cl.GetUserRatingSummaryByUsername(ctx, c.mapr.ToGetUserRatingSummaryByUsernameRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToGetUserRatingSummaryByUsernameResponse(res), nil
+}
+
 func (c *reviewClient) Close() error {
 	if c == nil || c.conn == nil {
 		return nil

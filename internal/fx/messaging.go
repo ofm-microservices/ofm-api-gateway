@@ -17,6 +17,7 @@ var MessagingModule = fx.Options(
 	fx.Provide(ProvideGigPublisher),
 	fx.Provide(ProvideOrderPublisher),
 	fx.Provide(ProvidePaymentOnboardingPublisher),
+	fx.Provide(ProvideUserClient),
 	fx.Provide(ProvideReviewClient),
 	fx.Provide(ProvideSearchClient),
 )
@@ -123,6 +124,29 @@ func ProvidePaymentOnboardingPublisher(
 	client, err := grpcclient.NewPaymentOnboardingClient(cfg.PaymentService, lg)
 	if err != nil {
 		lg.Error("connect payment service grpc failed", logging.Err(err))
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
+
+	return client, nil
+}
+
+// ProvideUserClient constructs the user-service gRPC client used for public
+// detailed freelancer profiles.
+func ProvideUserClient(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.UserClient, error) {
+	client, err := grpcclient.NewUserClient(cfg.UserService, lg)
+	if err != nil {
+		lg.Error("connect user service grpc failed", logging.Err(err))
 		return nil, err
 	}
 

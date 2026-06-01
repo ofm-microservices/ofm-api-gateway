@@ -16,6 +16,7 @@ type Config struct {
 	RegistrationSaga RegistrationSagaConfig
 	OrderSaga        OrderSagaConfig
 	ReviewService    ReviewServiceConfig
+	UserService      UserServiceConfig
 	SearchService    SearchServiceConfig
 	AuthService      AuthServiceConfig
 	GigService       GigServiceConfig

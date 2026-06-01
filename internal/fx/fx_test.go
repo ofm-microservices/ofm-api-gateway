@@ -110,6 +110,7 @@ func (h *gigHandlerStub) HandleReplacePackages(*fiber.Ctx) error  { return nil }
 func (h *gigHandlerStub) HandleReplaceQuestions(*fiber.Ctx) error { return nil }
 func (h *gigHandlerStub) HandleReplaceMedia(*fiber.Ctx) error     { return nil }
 func (h *gigHandlerStub) HandleGetDraft(*fiber.Ctx) error         { return nil }
+func (h *gigHandlerStub) HandleGetBySlug(*fiber.Ctx) error        { return nil }
 func (h *gigHandlerStub) HandlePublish(*fiber.Ctx) error          { return nil }
 
 type orderHandlerStub struct {
@@ -205,9 +206,41 @@ func (gigPublisherStub) GetDraft(context.Context, gateway.GetGigDraftRequest) (*
 	return &gateway.Gig{GigID: "gig-1"}, nil
 }
 
+func (gigPublisherStub) GetBySlug(context.Context, gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
 func (gigPublisherStub) Publish(context.Context, gateway.PublishGigRequest) (*gateway.Gig, error) {
 	return &gateway.Gig{GigID: "gig-1"}, nil
 }
+
+type reviewClientStub struct{}
+
+func (reviewClientStub) CreateReview(context.Context, gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error) {
+	return &gateway.CreateReviewResult{ReviewID: "review-1"}, nil
+}
+
+func (reviewClientStub) GetGigReviews(context.Context, gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error) {
+	return &gateway.GetGigReviewsResult{}, nil
+}
+
+func (reviewClientStub) GetGigReviewsSummary(context.Context, gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error) {
+	return &gateway.ReviewSummary{}, nil
+}
+
+func (reviewClientStub) GetUserRatingSummaryByUsername(context.Context, gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error) {
+	return &gateway.ReviewSummary{}, nil
+}
+
+func (reviewClientStub) Close() error { return nil }
+
+type userClientStub struct{}
+
+func (userClientStub) GetDetailedUserByUsername(context.Context, string) (*gateway.User, error) {
+	return &gateway.User{UserID: "user-1", Username: "alex"}, nil
+}
+
+func (userClientStub) Close() error { return nil }
 
 type gigServiceStub struct{}
 
@@ -232,6 +265,10 @@ func (gigServiceStub) ReplaceMedia(context.Context, gateway.ReplaceGigMediaReque
 }
 
 func (gigServiceStub) GetDraft(context.Context, gateway.GetGigDraftRequest) (*gateway.Gig, error) {
+	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) GetBySlug(context.Context, gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
 	return &gateway.Gig{GigID: "gig-1"}, nil
 }
 
@@ -451,7 +488,7 @@ var _ = Describe("FX providers", func() {
 		Expect(lc.hooks).To(HaveLen(1))
 		Expect(lc.hooks[0].OnStop(context.Background())).To(Succeed())
 
-		svc, err := ProvideGigService(gigPublisherStub{}, lg)
+		svc, err := ProvideGigService(gigPublisherStub{}, reviewClientStub{}, userClientStub{}, lg)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(svc).NotTo(BeNil())
 	})
