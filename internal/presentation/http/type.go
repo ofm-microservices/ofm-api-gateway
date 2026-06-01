@@ -12,10 +12,14 @@ import (
 // the HTTP layer.
 type RegistrationService = service.RegistrationService
 
+// AuthSessionService aliases the sign-in application boundary used by the HTTP layer.
+type AuthSessionService = service.AuthSessionService
+
 // AuthHandler exposes the auth HTTP routes owned by api-gateway.
 type AuthHandler interface {
 	RegisterRoutes(router fiber.Router)
 	HandleSignUp(c *fiber.Ctx) error
+	HandleSignIn(c *fiber.Ctx) error
 	HandleVerifyEmail(c *fiber.Ctx) error
 	HandleCompleteRegistration(c *fiber.Ctx) error
 }

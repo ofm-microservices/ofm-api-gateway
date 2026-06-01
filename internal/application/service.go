@@ -16,6 +16,11 @@ type registrationService struct {
 	log    Logger
 }
 
+type authSessionService struct {
+	client AuthSessionClient
+	log    Logger
+}
+
 type orderService struct {
 	client OrderCheckoutClient
 	log    Logger
@@ -53,6 +58,22 @@ func New(client RegistrationPublisher, tokens TokenIssuer, log Logger) (Registra
 		client: client,
 		tokens: tokens,
 		log:    log.With(logging.String("module", "application")),
+	}, nil
+}
+
+// NewAuthSession constructs the application service responsible for signing
+// into auth-service through the session boundary.
+func NewAuthSession(client AuthSessionClient, log Logger) (AuthSessionService, error) {
+	if client == nil {
+		return nil, ErrNilAuthSessionClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &authSessionService{
+		client: client,
+		log:    log.With(logging.String("module", "auth-session-application")),
 	}, nil
 }
 
@@ -207,7 +228,7 @@ func (s *registrationService) VerifyEmail(ctx context.Context, req gateway.Verif
 	return result, nil
 }
 
-func (s *registrationService) CompleteRegistration(ctx context.Context, req gateway.CompleteRegistrationRequest) (*gateway.CompleteRegistrationResult, error) {
+func (s *registrationService) CompleteRegistration(ctx context.Context, req gateway.CompleteRegistrationRequest) (*gateway.AuthTokensResult, error) {
 	log := logging.WithContext(ctx, s.log)
 	sessionID := strings.TrimSpace(req.SessionID)
 	clientID := strings.TrimSpace(req.ClientID)
@@ -243,6 +264,35 @@ func (s *registrationService) CompleteRegistration(ctx context.Context, req gate
 			logging.Attempt(1),
 			logging.Retryable(false),
 			logging.String("user_id", status.UserID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *authSessionService) SignIn(ctx context.Context, req gateway.SignInRequest) (*gateway.AuthTokensResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	identifier := strings.TrimSpace(req.Identifier)
+	password := req.Password
+	if identifier == "" {
+		return nil, gateway.ErrInvalidIdentifier
+	}
+	if strings.TrimSpace(password) == "" {
+		return nil, gateway.ErrInvalidPassword
+	}
+
+	result, err := s.client.SignIn(ctx, gateway.SignInRequest{
+		Identifier: identifier,
+		Password:   password,
+	})
+	if err != nil {
+		log.Error("failed to sign in",
+			logging.Operation("auth.sign_in"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("identifier", identifier),
 			logging.Err(err),
 		)
 		return nil, err

@@ -9,6 +9,7 @@ var (
 	ErrUserNotFound                 = errors.New("user not found")
 	ErrInvalidSessionID             = errors.New("invalid session id")
 	ErrInvalidClientID              = errors.New("invalid client id")
+	ErrInvalidIdentifier            = errors.New("invalid identifier")
 	ErrInvalidVerificationCode      = errors.New("invalid verification code")
 	ErrInvalidGigID                 = errors.New("invalid gig id")
 	ErrInvalidGigSlug               = errors.New("invalid gig slug")
@@ -71,6 +72,7 @@ var (
 	ErrFailedToStartRegistration    = errors.New("failed to start registration")
 	ErrFailedToVerifyEmail          = errors.New("failed to verify email")
 	ErrFailedToCompleteRegistration = errors.New("failed to complete registration")
+	ErrInvalidCredentials           = errors.New("invalid credentials")
 )
 
 // RegistrationConflictError reports that registration cannot continue because

@@ -10,8 +10,14 @@ import (
 
 type registrationMapper struct{}
 
+type authSessionMapper struct{}
+
 func newRegistrationMapper() RegistrationMapper {
 	return &registrationMapper{}
+}
+
+func newAuthSessionMapper() AuthSessionMapper {
+	return &authSessionMapper{}
 }
 
 func (m *registrationMapper) ToStartRegistrationRequest(req SignUpRequest) *registrationv1.StartRegistrationRequest {
@@ -62,13 +68,53 @@ func (m *registrationMapper) ToRegistrationStatus(res *registrationv1.GetRegistr
 	}
 }
 
-func (m *registrationMapper) ToCompleteRegistrationResult(res *authv1.IssueRegistrationTokensResponse) *CompleteRegistrationResult {
-	return &CompleteRegistrationResult{
+func (m *registrationMapper) ToCompleteRegistrationResult(res *authv1.IssueRegistrationTokensResponse) *AuthTokensResult {
+	return &AuthTokensResult{
 		UserID:       res.GetUserId(),
 		AccessToken:  res.GetAccessToken(),
 		RefreshToken: res.GetRefreshToken(),
 		TokenType:    res.GetTokenType(),
 		ExpiresIn:    res.GetExpiresIn(),
+	}
+}
+
+func (m *authSessionMapper) ToSignInRequest(req gateway.SignInRequest) *authv1.SignInRequest {
+	return &authv1.SignInRequest{
+		Identifier: req.Identifier,
+		Password:   req.Password,
+	}
+}
+
+func (m *authSessionMapper) ToAuthTokensResult(res *authv1.AuthTokensResponse) *AuthTokensResult {
+	return &AuthTokensResult{
+		UserID:       res.GetUserId(),
+		AccessToken:  res.GetAccessToken(),
+		RefreshToken: res.GetRefreshToken(),
+		TokenType:    res.GetTokenType(),
+		ExpiresIn:    res.GetExpiresIn(),
+	}
+}
+
+func (m *authSessionMapper) ToError(err error) error {
+	st, ok := status.FromError(err)
+	if !ok {
+		return gateway.ErrInvalidCredentials
+	}
+
+	switch st.Code() {
+	case codes.Unauthenticated:
+		return gateway.ErrInvalidCredentials
+	case codes.InvalidArgument:
+		switch st.Message() {
+		case "invalid identifier":
+			return gateway.ErrInvalidIdentifier
+		case "invalid password":
+			return gateway.ErrInvalidPassword
+		default:
+			return gateway.ErrInvalidCredentials
+		}
+	default:
+		return gateway.ErrInvalidCredentials
 	}
 }
 

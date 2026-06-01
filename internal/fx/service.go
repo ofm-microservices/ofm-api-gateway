@@ -10,6 +10,7 @@ import (
 // ServiceModule wires application services into the FX graph.
 var ServiceModule = fx.Options(
 	fx.Provide(ProvideRegistrationService),
+	fx.Provide(ProvideAuthSessionService),
 	fx.Provide(ProvideGigService),
 	fx.Provide(ProvideOrderService),
 	fx.Provide(ProvidePaymentOnboardingService),
@@ -24,6 +25,14 @@ func ProvideRegistrationService(
 	lg logging.Logger,
 ) (service.RegistrationService, error) {
 	return service.New(pub, tokens, lg)
+}
+
+// ProvideAuthSessionService constructs the auth session application service.
+func ProvideAuthSessionService(
+	client service.AuthSessionClient,
+	lg logging.Logger,
+) (service.AuthSessionService, error) {
+	return service.NewAuthSession(client, lg)
 }
 
 // ProvideGigService constructs the gig application service.

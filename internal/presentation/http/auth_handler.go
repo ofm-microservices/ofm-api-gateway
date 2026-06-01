@@ -10,22 +10,27 @@ import (
 )
 
 type authHandler struct {
-	service RegistrationService
-	log     logging.Logger
+	registration RegistrationService
+	session      AuthSessionService
+	log          logging.Logger
 }
 
 // NewAuthHandler constructs the auth HTTP handler group for signup requests.
-func NewAuthHandler(service RegistrationService, log logging.Logger) (AuthHandler, error) {
-	if service == nil {
+func NewAuthHandler(registration RegistrationService, session AuthSessionService, log logging.Logger) (AuthHandler, error) {
+	if registration == nil {
 		return nil, ErrNilRegistrationService
+	}
+	if session == nil {
+		return nil, ErrNilAuthSessionService
 	}
 	if log == nil {
 		return nil, ErrNilLogger
 	}
 
 	return &authHandler{
-		service: service,
-		log:     log.With(logging.String("module", "http-auth-handler")),
+		registration: registration,
+		session:      session,
+		log:          log.With(logging.String("module", "http-auth-handler")),
 	}, nil
 }
 
@@ -34,6 +39,7 @@ func (h *authHandler) RegisterRoutes(router fiber.Router) {
 	auth := router.Group("/auth")
 
 	auth.Post("/sign-up", h.HandleSignUp)
+	auth.Post("/sign-in", h.HandleSignIn)
 	auth.Post("/sign-up/verify-email", h.HandleVerifyEmail)
 	auth.Post("/sign-up/complete", h.HandleCompleteRegistration)
 }
@@ -47,7 +53,7 @@ func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
 	}
 
-	result, err := h.service.SignUp(c.UserContext(), req)
+	result, err := h.registration.SignUp(c.UserContext(), req)
 	if err != nil {
 		return h.MapSignUpError(c, err)
 	}
@@ -69,7 +75,7 @@ func (h *authHandler) HandleVerifyEmail(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
 	}
 
-	result, err := h.service.VerifyEmail(c.UserContext(), req)
+	result, err := h.registration.VerifyEmail(c.UserContext(), req)
 	if err != nil {
 		return h.MapSignUpError(c, err)
 	}
@@ -90,7 +96,7 @@ func (h *authHandler) HandleCompleteRegistration(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
 	}
 
-	result, err := h.service.CompleteRegistration(c.UserContext(), req)
+	result, err := h.registration.CompleteRegistration(c.UserContext(), req)
 	if err != nil {
 		return h.MapSignUpError(c, err)
 	}
@@ -98,6 +104,28 @@ func (h *authHandler) HandleCompleteRegistration(c *fiber.Ctx) error {
 	logging.WithContext(c.UserContext(), h.log).Info("complete registration request accepted",
 		logging.Operation("http.auth.complete_registration"),
 		logging.DurationMS(time.Since(started)),
+	)
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleSignIn parses credentials and relays the auth-session sign-in result.
+func (h *authHandler) HandleSignIn(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+	var req gateway.SignInRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.session.SignIn(c.UserContext(), req)
+	if err != nil {
+		return h.MapSignInError(c, err)
+	}
+
+	log.Info("sign in request accepted",
+		logging.Operation("http.auth.sign_in"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("identifier", req.Identifier),
 	)
 	return c.Status(fiber.StatusOK).JSON(result)
 }
@@ -135,6 +163,27 @@ func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
 		}
 		log.Error("request failed",
 			logging.Operation("http.auth.signup_error"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+}
+
+// MapSignInError translates sign-in failures into stable HTTP responses.
+func (h *authHandler) MapSignInError(c *fiber.Ctx, err error) error {
+	log := logging.WithContext(c.UserContext(), h.log)
+	switch err {
+	case gateway.ErrInvalidIdentifier:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid identifier"})
+	case gateway.ErrInvalidPassword:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid password"})
+	case gateway.ErrInvalidCredentials:
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
+	default:
+		log.Error("request failed",
+			logging.Operation("http.auth.sign_in_error"),
 			logging.Attempt(1),
 			logging.Retryable(false),
 			logging.Err(err),

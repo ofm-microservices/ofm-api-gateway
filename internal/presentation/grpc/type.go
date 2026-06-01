@@ -30,7 +30,12 @@ type VerifyEmailRequest = gateway.VerifyEmailRequest
 // VerifyEmailResult aliases the gateway-domain verification result.
 type VerifyEmailResult = gateway.VerifyEmailResult
 
-// CompleteRegistrationResult aliases the gateway-domain token result.
+// AuthTokensResult aliases the gateway-domain token result used by both auth
+// flows.
+type AuthTokensResult = gateway.AuthTokensResult
+
+// CompleteRegistrationResult is retained as a compatibility alias for older
+// registration-only code paths.
 type CompleteRegistrationResult = gateway.CompleteRegistrationResult
 
 // Client is the gateway-facing gRPC adapter for registration-saga-service.
@@ -44,6 +49,12 @@ type Client interface {
 // AuthClient is the gateway-facing gRPC adapter for auth-service token issuing.
 type AuthClient interface {
 	IssueRegistrationTokens(ctx context.Context, userID string) (*CompleteRegistrationResult, error)
+	Close() error
+}
+
+// AuthSessionClient is the gateway-facing gRPC adapter for sign-in.
+type AuthSessionClient interface {
+	SignIn(ctx context.Context, req gateway.SignInRequest) (*AuthTokensResult, error)
 	Close() error
 }
 
@@ -113,9 +124,17 @@ type RegistrationMapper interface {
 	ToVerifyEmailRequest(req VerifyEmailRequest) *registrationv1.VerifyEmailRequest
 	ToVerifyEmailResult(res *registrationv1.VerifyEmailResponse) *VerifyEmailResult
 	ToRegistrationStatus(res *registrationv1.GetRegistrationStatusResponse) *gateway.RegistrationStatus
-	ToCompleteRegistrationResult(res *authv1.IssueRegistrationTokensResponse) *CompleteRegistrationResult
+	ToCompleteRegistrationResult(res *authv1.IssueRegistrationTokensResponse) *AuthTokensResult
 	ToStartRegistrationError(err error) error
 	ToRegistrationStatusError(err error) error
+}
+
+// AuthSessionMapper translates between gateway sign-in types and the shared
+// auth-session gRPC contract.
+type AuthSessionMapper interface {
+	ToSignInRequest(req gateway.SignInRequest) *authv1.SignInRequest
+	ToAuthTokensResult(res *authv1.AuthTokensResponse) *AuthTokensResult
+	ToError(err error) error
 }
 
 // GigMapper translates between gateway gig types and the shared gig gRPC

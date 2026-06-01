@@ -55,7 +55,7 @@ func (h *onboardingHandler) HandleStartFreelancerOnboarding(c *fiber.Ctx) error 
 	}
 
 	result, err := h.service.StartFreelancerOnboarding(c.UserContext(), gateway.StartFreelancerOnboardingRequest{
-		UserID: userID,
+		UserID:  userID,
 		Country: "",
 	})
 	if err != nil {

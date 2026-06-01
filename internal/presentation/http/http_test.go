@@ -26,16 +26,26 @@ func TestHTTP(t *testing.T) {
 	RunSpecs(t, "HTTP Suite")
 }
 
+type authSessionServiceStub struct{}
+
+func (authSessionServiceStub) SignIn(context.Context, gateway.SignInRequest) (*gateway.AuthTokensResult, error) {
+	return &gateway.AuthTokensResult{}, nil
+}
+
+func (authSessionServiceStub) Close() error { return nil }
+
 var _ = Describe("AuthHandler", func() {
 	var (
 		ctrl    *gomock.Controller
 		service *MockRegistrationService
+		session authSessionServiceStub
 		logger  logging.Logger
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		service = NewMockRegistrationService(ctrl)
+		session = authSessionServiceStub{}
 
 		var err error
 		logger, err = logging.New("api-gateway", "test", "debug")
@@ -48,11 +58,15 @@ var _ = Describe("AuthHandler", func() {
 
 	Describe("NewAuthHandler", func() {
 		It("validates nil collaborators", func() {
-			handler, err := NewAuthHandler(nil, logger)
+			handler, err := NewAuthHandler(nil, session, logger)
 			Expect(handler).To(BeNil())
 			Expect(err).To(MatchError(ErrNilRegistrationService))
 
-			handler, err = NewAuthHandler(service, nil)
+			handler, err = NewAuthHandler(service, nil, logger)
+			Expect(handler).To(BeNil())
+			Expect(err).To(MatchError(ErrNilAuthSessionService))
+
+			handler, err = NewAuthHandler(service, session, nil)
 			Expect(handler).To(BeNil())
 			Expect(err).To(MatchError(ErrNilLogger))
 		})
@@ -64,7 +78,7 @@ var _ = Describe("AuthHandler", func() {
 		)
 
 		BeforeEach(func() {
-			handler, err := NewAuthHandler(service, logger)
+			handler, err := NewAuthHandler(service, session, logger)
 			Expect(err).NotTo(HaveOccurred())
 
 			app = fiber.New()
@@ -212,7 +226,7 @@ var _ = Describe("AuthHandler", func() {
 		var app *fiber.App
 
 		BeforeEach(func() {
-			handler, err := NewAuthHandler(service, logger)
+			handler, err := NewAuthHandler(service, session, logger)
 			Expect(err).NotTo(HaveOccurred())
 			app = fiber.New()
 			v1 := app.Group("/v1")
@@ -278,7 +292,7 @@ var _ = Describe("AuthHandler", func() {
 		var app *fiber.App
 
 		BeforeEach(func() {
-			handler, err := NewAuthHandler(service, logger)
+			handler, err := NewAuthHandler(service, session, logger)
 			Expect(err).NotTo(HaveOccurred())
 			app = fiber.New()
 			v1 := app.Group("/v1")

@@ -55,6 +55,20 @@ func (mr *MockAuthHandlerMockRecorder) HandleSignUp(c any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleSignUp", reflect.TypeOf((*MockAuthHandler)(nil).HandleSignUp), c)
 }
 
+// HandleSignIn mocks base method.
+func (m *MockAuthHandler) HandleSignIn(c *v2.Ctx) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleSignIn", c)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// HandleSignIn indicates an expected call of HandleSignIn.
+func (mr *MockAuthHandlerMockRecorder) HandleSignIn(c any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleSignIn", reflect.TypeOf((*MockAuthHandler)(nil).HandleSignIn), c)
+}
+
 // HandleVerifyEmail mocks base method.
 func (m *MockAuthHandler) HandleVerifyEmail(c *v2.Ctx) error {
 	m.ctrl.T.Helper()
