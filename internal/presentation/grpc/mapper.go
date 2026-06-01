@@ -91,6 +91,12 @@ func (m *authSessionMapper) ToRefreshRequest(req gateway.RefreshTokensRequest) *
 	}
 }
 
+func (m *authSessionMapper) ToSignOutRequest(req gateway.SignOutRequest) *authv1.SignOutRequest {
+	return &authv1.SignOutRequest{
+		RefreshToken: req.RefreshToken,
+	}
+}
+
 func (m *authSessionMapper) ToSignInResult(res *authv1.SignInResponse) *AuthTokensResult {
 	return &AuthTokensResult{
 		UserID:       res.GetUserId(),
@@ -154,6 +160,27 @@ func (m *authSessionMapper) ToRefreshError(err error) error {
 		}
 	default:
 		return gateway.ErrFailedToRefreshTokens
+	}
+}
+
+func (m *authSessionMapper) ToSignOutError(err error) error {
+	st, ok := status.FromError(err)
+	if !ok {
+		return gateway.ErrFailedToSignOut
+	}
+
+	switch st.Code() {
+	case codes.Unauthenticated:
+		return gateway.ErrInvalidCredentials
+	case codes.InvalidArgument:
+		switch st.Message() {
+		case "invalid refresh token":
+			return gateway.ErrInvalidRefreshToken
+		default:
+			return gateway.ErrInvalidRefreshToken
+		}
+	default:
+		return gateway.ErrFailedToSignOut
 	}
 }
 

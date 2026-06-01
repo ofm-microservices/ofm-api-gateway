@@ -36,6 +36,10 @@ func (authSessionServiceStub) Refresh(context.Context, gateway.RefreshTokensRequ
 	return &gateway.AuthTokensResult{}, nil
 }
 
+func (authSessionServiceStub) SignOut(context.Context, gateway.SignOutRequest) error {
+	return nil
+}
+
 func (authSessionServiceStub) Close() error { return nil }
 
 var _ = Describe("AuthHandler", func() {

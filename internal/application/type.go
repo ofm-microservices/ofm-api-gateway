@@ -28,6 +28,7 @@ type TokenIssuer interface {
 type AuthSessionClient interface {
 	SignIn(ctx context.Context, req gateway.SignInRequest) (*gateway.AuthTokensResult, error)
 	Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*gateway.AuthTokensResult, error)
+	SignOut(ctx context.Context, req gateway.SignOutRequest) error
 	Close() error
 }
 
@@ -46,6 +47,7 @@ type RegistrationService interface {
 type AuthSessionService interface {
 	SignIn(ctx context.Context, req gateway.SignInRequest) (*gateway.AuthTokensResult, error)
 	Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*gateway.AuthTokensResult, error)
+	SignOut(ctx context.Context, req gateway.SignOutRequest) error
 }
 
 // GigService validates the public gig draft workflow and delegates

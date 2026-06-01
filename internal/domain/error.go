@@ -74,6 +74,7 @@ var (
 	ErrFailedToVerifyEmail          = errors.New("failed to verify email")
 	ErrFailedToCompleteRegistration = errors.New("failed to complete registration")
 	ErrFailedToRefreshTokens        = errors.New("failed to refresh tokens")
+	ErrFailedToSignOut              = errors.New("failed to sign out")
 	ErrInvalidCredentials           = errors.New("invalid credentials")
 )
 

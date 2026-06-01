@@ -56,6 +56,7 @@ type AuthClient interface {
 type AuthSessionClient interface {
 	SignIn(ctx context.Context, req gateway.SignInRequest) (*AuthTokensResult, error)
 	Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*AuthTokensResult, error)
+	SignOut(ctx context.Context, req gateway.SignOutRequest) error
 	Close() error
 }
 
@@ -135,10 +136,12 @@ type RegistrationMapper interface {
 type AuthSessionMapper interface {
 	ToSignInRequest(req gateway.SignInRequest) *authv1.SignInRequest
 	ToRefreshRequest(req gateway.RefreshTokensRequest) *authv1.RefreshRequest
+	ToSignOutRequest(req gateway.SignOutRequest) *authv1.SignOutRequest
 	ToSignInResult(res *authv1.SignInResponse) *AuthTokensResult
 	ToRefreshResult(res *authv1.RefreshResponse) *AuthTokensResult
 	ToError(err error) error
 	ToRefreshError(err error) error
+	ToSignOutError(err error) error
 }
 
 // GigMapper translates between gateway gig types and the shared gig gRPC
