@@ -3,21 +3,32 @@ package service
 import (
 	gateway "api-gateway/internal/domain"
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 
+	"github.com/google/uuid"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 )
 
 type gigService struct {
 	client GigPublisher
+	review ReviewClient
+	user   UserClient
 	log    Logger
 }
 
 // NewGig constructs the application service responsible for managing gig
 // drafts through the gig-service boundary.
-func NewGig(client GigPublisher, log Logger) (GigService, error) {
+func NewGig(client GigPublisher, review ReviewClient, user UserClient, log Logger) (GigService, error) {
 	if client == nil {
 		return nil, ErrNilGigClient
+	}
+	if review == nil {
+		return nil, ErrNilReviewClient
+	}
+	if user == nil {
+		return nil, ErrNilUserClient
 	}
 	if log == nil {
 		return nil, ErrNilLogger
@@ -25,6 +36,8 @@ func NewGig(client GigPublisher, log Logger) (GigService, error) {
 
 	return &gigService{
 		client: client,
+		review: review,
+		user:   user,
 		log:    log.With(logging.String("module", "gig-application")),
 	}, nil
 }
@@ -144,6 +157,108 @@ func (s *gigService) GetDraft(ctx context.Context, req gateway.GetGigDraftReques
 	})
 }
 
+func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
+	username := strings.TrimSpace(req.Username)
+	slug := strings.TrimSpace(req.Slug)
+	if username == "" {
+		return nil, gateway.ErrInvalidUsername
+	}
+	if slug == "" {
+		return nil, gateway.ErrGigNotFound
+	}
+	requestedSlug, gigID, err := parsePublicGigSlug(slug)
+	if err != nil {
+		return nil, gateway.ErrGigNotFound
+	}
+	type result struct {
+		gig               *gateway.Gig
+		reviews           *gateway.GetGigReviewsResult
+		summary           *gateway.ReviewSummary
+		freelancer        *gateway.User
+		freelancerSummary *gateway.ReviewSummary
+		gigErr            error
+	}
+	var (
+		wg  sync.WaitGroup
+		mu  sync.Mutex
+		out = result{}
+	)
+	wg.Add(5)
+	go func() {
+		defer wg.Done()
+		gig, err := s.client.GetBySlug(ctx, gateway.GetGigBySlugRequest{Slug: slug})
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			out.gigErr = err
+			return
+		}
+		out.gig = gig
+	}()
+	go func() {
+		defer wg.Done()
+		reviews, err := s.review.GetGigReviews(ctx, gateway.GetGigReviewsRequest{GigID: gigID, Cursor: req.Cursor})
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			return
+		}
+		out.reviews = reviews
+	}()
+	go func() {
+		defer wg.Done()
+		summary, err := s.review.GetGigReviewsSummary(ctx, gateway.GetGigReviewsSummaryRequest{GigID: gigID})
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			return
+		}
+		out.summary = summary
+	}()
+	go func() {
+		defer wg.Done()
+		user, err := s.user.GetDetailedUserByUsername(ctx, username)
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			return
+		}
+		out.freelancer = user
+	}()
+	go func() {
+		defer wg.Done()
+		summary, err := s.review.GetUserRatingSummaryByUsername(ctx, gateway.GetUserRatingSummaryByUsernameRequest{Username: username})
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			return
+		}
+		out.freelancerSummary = summary
+	}()
+	wg.Wait()
+	if out.gigErr != nil {
+		return nil, out.gigErr
+	}
+	if out.gig == nil {
+		return nil, gateway.ErrGigNotFound
+	}
+	if strings.TrimSpace(out.gig.Slug) != requestedSlug {
+		return nil, gateway.ErrGigNotFound
+	}
+	if out.reviews != nil {
+		out.gig.Reviews = out.reviews.Reviews
+	}
+	out.gig.Freelancer = out.freelancer
+	if out.gig.Freelancer != nil && strings.TrimSpace(out.gig.FreelancerID) != "" && strings.TrimSpace(out.gig.Freelancer.UserID) != "" && out.gig.FreelancerID != out.gig.Freelancer.UserID {
+		return nil, gateway.ErrGigNotFound
+	}
+	if out.gig.Freelancer != nil {
+		out.gig.Freelancer.ReviewsSummary = out.freelancerSummary
+	}
+	out.gig.ReviewsSummary = out.summary
+	return out.gig, nil
+}
+
 func (s *gigService) Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
 	normalized, err := normalizeGigBaseRequest(req.GigID, req.FreelancerID)
 	if err != nil {
@@ -172,6 +287,25 @@ func normalizeGigBaseRequest(gigID, freelancerID string) (normalizedGigRequest, 
 	}
 
 	return normalizedGigRequest{gigID: gigID, freelancerID: freelancerID}, nil
+}
+
+func parsePublicGigSlug(slug string) (string, string, error) {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return "", "", fmt.Errorf("empty slug")
+	}
+	if len(slug) <= 37 {
+		return "", "", fmt.Errorf("invalid slug")
+	}
+	sep := len(slug) - 37
+	if sep < 1 || slug[sep] != '-' {
+		return "", "", fmt.Errorf("invalid slug")
+	}
+	gigID := strings.TrimSpace(slug[len(slug)-36:])
+	if _, err := uuid.Parse(gigID); err != nil {
+		return "", "", fmt.Errorf("invalid slug")
+	}
+	return slug, gigID, nil
 }
 
 func normalizeGigPackages(packages []gateway.GigPackage) ([]gateway.GigPackage, error) {

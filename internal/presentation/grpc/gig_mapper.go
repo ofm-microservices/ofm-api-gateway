@@ -115,6 +115,14 @@ func (m *gigMapper) ToGetDraftResponse(res *gigv1.GetDraftResponse) *gateway.Gig
 	return m.toGig(res.GetGig())
 }
 
+func (m *gigMapper) ToGetBySlugRequest(req gateway.GetGigBySlugRequest) *gigv1.GetGigBySlugRequest {
+	return &gigv1.GetGigBySlugRequest{Slug: req.Slug}
+}
+
+func (m *gigMapper) ToGetBySlugResponse(res *gigv1.GetGigBySlugResponse) *gateway.Gig {
+	return m.toGig(res.GetGig())
+}
+
 func (m *gigMapper) ToPublishRequest(req gateway.PublishGigRequest) *gigv1.PublishRequest {
 	return &gigv1.PublishRequest{GigId: req.GigID, FreelancerId: req.FreelancerID}
 }
@@ -185,6 +193,7 @@ func (m *gigMapper) toGig(res *gigv1.Gig) *gateway.Gig {
 	gig := &gateway.Gig{
 		GigID:                 res.GetGigId(),
 		FreelancerID:          res.GetFreelancerId(),
+		Slug:                  res.GetSlug(),
 		Title:                 res.GetTitle(),
 		Description:           res.GetDescription(),
 		CategoryID:            res.GetCategoryId(),
@@ -195,6 +204,7 @@ func (m *gigMapper) toGig(res *gigv1.Gig) *gateway.Gig {
 		RequirementsCompleted: res.GetRequirementsCompleted(),
 		MediaCompleted:        res.GetMediaCompleted(),
 		PictureFileID:         res.GetPictureFileId(),
+		PictureURL:            res.GetPictureUrl(),
 		PublishedAt:           res.GetPublishedAt(),
 		CreatedAt:             res.GetCreatedAt(),
 		UpdatedAt:             res.GetUpdatedAt(),
@@ -234,6 +244,7 @@ func (m *gigMapper) toGig(res *gigv1.Gig) *gateway.Gig {
 				ID:        item.GetFileId(),
 				GigID:     item.GetGigId(),
 				FileID:    item.GetFileId(),
+				URL:       item.GetUrl(),
 				SortOrder: item.GetSortOrder(),
 			})
 		}

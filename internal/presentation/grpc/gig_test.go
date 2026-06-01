@@ -21,6 +21,7 @@ type fakeGigCommandServiceClient struct {
 	questionsReq *gigv1.ReplaceQuestionsRequest
 	mediaReq     *gigv1.ReplaceMediaRequest
 	draftReq     *gigv1.GetDraftRequest
+	slugReq      *gigv1.GetGigBySlugRequest
 	publishReq   *gigv1.PublishRequest
 
 	createRes    *gigv1.CreateDraftResponse
@@ -29,6 +30,7 @@ type fakeGigCommandServiceClient struct {
 	questionsRes *gigv1.ReplaceQuestionsResponse
 	mediaRes     *gigv1.ReplaceMediaResponse
 	draftRes     *gigv1.GetDraftResponse
+	slugRes      *gigv1.GetGigBySlugResponse
 	publishRes   *gigv1.PublishResponse
 
 	err error
@@ -62,6 +64,11 @@ func (f *fakeGigCommandServiceClient) ReplaceMedia(_ context.Context, req *gigv1
 func (f *fakeGigCommandServiceClient) GetDraft(_ context.Context, req *gigv1.GetDraftRequest, _ ...grpc.CallOption) (*gigv1.GetDraftResponse, error) {
 	f.draftReq = req
 	return f.draftRes, f.err
+}
+
+func (f *fakeGigCommandServiceClient) GetGigBySlug(_ context.Context, req *gigv1.GetGigBySlugRequest, _ ...grpc.CallOption) (*gigv1.GetGigBySlugResponse, error) {
+	f.slugReq = req
+	return f.slugRes, f.err
 }
 
 func (f *fakeGigCommandServiceClient) Publish(_ context.Context, req *gigv1.PublishRequest, _ ...grpc.CallOption) (*gigv1.PublishResponse, error) {
@@ -98,6 +105,7 @@ var _ = Describe("GigMapper", func() {
 		gig := &gigv1.Gig{
 			GigId:                 "gig-1",
 			FreelancerId:          "freelancer-1",
+			Slug:                  "my-gig-gig-1",
 			Title:                 "Title",
 			Description:           "Description",
 			CategoryId:            1,
@@ -121,6 +129,7 @@ var _ = Describe("GigMapper", func() {
 		Expect(mapr.ToReplaceQuestionsRequest(gateway.ReplaceGigQuestionsRequest{GigID: "gig-1", FreelancerID: "freelancer-1", Questions: []gateway.GigQuestion{{ID: "q-1", GigID: "gig-1", Content: "question", SortOrder: 1}}}).GetQuestions()).To(HaveLen(1))
 		Expect(mapr.ToReplaceMediaRequest(gateway.ReplaceGigMediaRequest{GigID: "gig-1", FreelancerID: "freelancer-1", Files: []gateway.GigMediaUpload{{Filename: "cover.png", ContentType: "image/png", Data: []byte("x")}}}).GetFiles()).To(HaveLen(1))
 		Expect(mapr.ToGetDraftRequest(gateway.GetGigDraftRequest{GigID: "gig-1", FreelancerID: "freelancer-1"}).GetGigId()).To(Equal("gig-1"))
+		Expect(mapr.ToGetBySlugRequest(gateway.GetGigBySlugRequest{Slug: "my-gig-gig-1"}).GetSlug()).To(Equal("my-gig-gig-1"))
 		Expect(mapr.ToPublishRequest(gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1"}).GetGigId()).To(Equal("gig-1"))
 
 		Expect(mapr.ToUpdateBasicInfoResponse(&gigv1.UpdateBasicInfoResponse{Gig: gig}).GigID).To(Equal("gig-1"))
@@ -128,6 +137,7 @@ var _ = Describe("GigMapper", func() {
 		Expect(mapr.ToReplaceQuestionsResponse(&gigv1.ReplaceQuestionsResponse{Gig: gig}).Questions).To(HaveLen(1))
 		Expect(mapr.ToReplaceMediaResponse(&gigv1.ReplaceMediaResponse{Gig: gig}).Media).To(HaveLen(1))
 		Expect(mapr.ToGetDraftResponse(&gigv1.GetDraftResponse{Gig: gig}).GigID).To(Equal("gig-1"))
+		Expect(mapr.ToGetBySlugResponse(&gigv1.GetGigBySlugResponse{Gig: gig}).GigID).To(Equal("gig-1"))
 		Expect(mapr.ToPublishResponse(&gigv1.PublishResponse{Gig: gig}).GigID).To(Equal("gig-1"))
 		Expect(mapr.ToCreateDraftResponse(&gigv1.CreateDraftResponse{Gig: gig}).GigID).To(Equal("gig-1"))
 		Expect(mapr.ToCreateDraftResponse(nil)).To(BeNil())
@@ -197,6 +207,7 @@ var _ = Describe("GigClient", func() {
 		fake.questionsRes = &gigv1.ReplaceQuestionsResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
 		fake.mediaRes = &gigv1.ReplaceMediaResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
 		fake.draftRes = &gigv1.GetDraftResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
+		fake.slugRes = &gigv1.GetGigBySlugResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
 		fake.publishRes = &gigv1.PublishResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
 
 		res, err := client.CreateDraft(context.Background(), gateway.CreateGigDraftRequest{FreelancerID: "freelancer-1"})
@@ -227,6 +238,11 @@ var _ = Describe("GigClient", func() {
 		res, err = client.GetDraft(context.Background(), gateway.GetGigDraftRequest{GigID: "gig-1", FreelancerID: "freelancer-1"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fake.draftReq.GetGigId()).To(Equal("gig-1"))
+		Expect(res.GigID).To(Equal("gig-1"))
+
+		res, err = client.GetBySlug(context.Background(), gateway.GetGigBySlugRequest{Slug: "my-gig-gig-1"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fake.slugReq.GetSlug()).To(Equal("my-gig-gig-1"))
 		Expect(res.GigID).To(Equal("gig-1"))
 
 		res, err = client.Publish(context.Background(), gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1"})

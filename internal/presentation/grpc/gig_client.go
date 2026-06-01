@@ -101,6 +101,15 @@ func (c *gigClient) GetDraft(ctx context.Context, req gateway.GetGigDraftRequest
 	return c.mapr.ToGetDraftResponse(res), nil
 }
 
+func (c *gigClient) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
+	res, err := c.cl.GetGigBySlug(ctx, c.mapr.ToGetBySlugRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+
+	return c.mapr.ToGetBySlugResponse(res), nil
+}
+
 func (c *gigClient) Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
 	res, err := c.cl.Publish(ctx, c.mapr.ToPublishRequest(req))
 	if err != nil {

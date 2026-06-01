@@ -52,6 +52,7 @@ type GigHandler interface {
 	HandleReplaceQuestions(c *fiber.Ctx) error
 	HandleReplaceMedia(c *fiber.Ctx) error
 	HandleGetDraft(c *fiber.Ctx) error
+	HandleGetBySlug(c *fiber.Ctx) error
 	HandlePublish(c *fiber.Ctx) error
 }
 

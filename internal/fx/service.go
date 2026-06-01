@@ -29,9 +29,11 @@ func ProvideRegistrationService(
 // ProvideGigService constructs the gig application service.
 func ProvideGigService(
 	client service.GigPublisher,
+	review service.ReviewClient,
+	user service.UserClient,
 	lg logging.Logger,
 ) (service.GigService, error) {
-	return service.NewGig(client, lg)
+	return service.NewGig(client, review, user, lg)
 }
 
 // ProvideOrderService constructs the order application service.

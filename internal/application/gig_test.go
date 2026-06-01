@@ -17,6 +17,7 @@ type gigPublisherStub struct {
 	questionsReq gateway.ReplaceGigQuestionsRequest
 	mediaReq     gateway.ReplaceGigMediaRequest
 	draftReq     gateway.GetGigDraftRequest
+	slugReq      gateway.GetGigBySlugRequest
 	publishReq   gateway.PublishGigRequest
 
 	createRes    *gateway.Gig
@@ -25,6 +26,7 @@ type gigPublisherStub struct {
 	questionsRes *gateway.Gig
 	mediaRes     *gateway.Gig
 	draftRes     *gateway.Gig
+	slugRes      *gateway.Gig
 	publishRes   *gateway.Gig
 
 	createErr    error
@@ -33,7 +35,18 @@ type gigPublisherStub struct {
 	questionsErr error
 	mediaErr     error
 	draftErr     error
+	slugErr      error
 	publishErr   error
+}
+
+type reviewClientStub struct {
+	reviewsReq       gateway.GetGigReviewsRequest
+	summaryReq       gateway.GetGigReviewsSummaryRequest
+	sellerSummaryReq gateway.GetUserRatingSummaryByUsernameRequest
+	reviewsRes       *gateway.GetGigReviewsResult
+	summaryRes       *gateway.ReviewSummary
+	reviewsErr       error
+	summaryErr       error
 }
 
 func (s *gigPublisherStub) CreateDraft(_ context.Context, req gateway.CreateGigDraftRequest) (*gateway.Gig, error) {
@@ -66,36 +79,87 @@ func (s *gigPublisherStub) GetDraft(_ context.Context, req gateway.GetGigDraftRe
 	return s.draftRes, s.draftErr
 }
 
+func (s *gigPublisherStub) GetBySlug(_ context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
+	s.slugReq = req
+	return s.slugRes, s.slugErr
+}
+
 func (s *gigPublisherStub) Publish(_ context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
 	s.publishReq = req
 	return s.publishRes, s.publishErr
 }
 
+func (s *reviewClientStub) CreateReview(context.Context, gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error) {
+	return nil, nil
+}
+
+func (s *reviewClientStub) GetGigReviews(_ context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error) {
+	s.reviewsReq = req
+	return s.reviewsRes, s.reviewsErr
+}
+
+func (s *reviewClientStub) GetGigReviewsSummary(_ context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error) {
+	s.summaryReq = req
+	return s.summaryRes, s.summaryErr
+}
+
+func (s *reviewClientStub) GetUserRatingSummaryByUsername(_ context.Context, req gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error) {
+	s.sellerSummaryReq = req
+	return s.summaryRes, s.summaryErr
+}
+
+func (s *reviewClientStub) Close() error { return nil }
+
+type userClientStub struct {
+	usernameReq string
+	userRes     *gateway.User
+	err         error
+}
+
+func (s *userClientStub) GetDetailedUserByUsername(_ context.Context, username string) (*gateway.User, error) {
+	s.usernameReq = username
+	return s.userRes, s.err
+}
+
+func (s *userClientStub) Close() error { return nil }
+
 var _ = Describe("GigService", func() {
 	var (
-		pub *gigPublisherStub
-		lg  logging.Logger
+		pub    *gigPublisherStub
+		review *reviewClientStub
+		user   *userClientStub
+		lg     logging.Logger
 	)
 
 	BeforeEach(func() {
 		pub = &gigPublisherStub{}
+		review = &reviewClientStub{}
+		user = &userClientStub{}
 		var err error
 		lg, err = logging.New("api-gateway", "test", "debug")
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("validates constructor dependencies", func() {
-		svc, err := NewGig(nil, lg)
+		svc, err := NewGig(nil, review, user, lg)
 		Expect(svc).To(BeNil())
 		Expect(err).To(MatchError(ErrNilGigClient))
 
-		svc, err = NewGig(pub, nil)
+		svc, err = NewGig(pub, nil, user, lg)
+		Expect(svc).To(BeNil())
+		Expect(err).To(MatchError(ErrNilReviewClient))
+
+		svc, err = NewGig(pub, review, nil, lg)
+		Expect(svc).To(BeNil())
+		Expect(err).To(MatchError(ErrNilUserClient))
+
+		svc, err = NewGig(pub, review, user, nil)
 		Expect(svc).To(BeNil())
 		Expect(err).To(MatchError(ErrNilLogger))
 	})
 
 	It("creates drafts with trimmed freelancer ids", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 		pub.createRes = &gateway.Gig{GigID: "gig-1"}
 
@@ -106,7 +170,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("rejects invalid basic info fields", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = svc.UpdateBasicInfo(context.Background(), gateway.UpdateGigBasicInfoRequest{GigID: "gig-1", FreelancerID: "freelancer-1"})
@@ -123,7 +187,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("normalizes and forwards valid basic info", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 		pub.updateRes = &gateway.Gig{GigID: "gig-1"}
 
@@ -148,7 +212,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("validates package replacement rules", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = svc.ReplacePackages(context.Background(), gateway.ReplaceGigPackagesRequest{
@@ -176,7 +240,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("forwards question, media, draft, and publish operations", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 		pub.questionsRes = &gateway.Gig{GigID: "gig-1"}
 		pub.mediaRes = &gateway.Gig{GigID: "gig-1"}
@@ -209,7 +273,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("returns delegate failures unchanged", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 		pub.createErr = errors.New("boom")
 
@@ -218,7 +282,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("validates all gig base request fields", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = svc.UpdateBasicInfo(context.Background(), gateway.UpdateGigBasicInfoRequest{
@@ -243,7 +307,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("validates every package field", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = svc.ReplacePackages(context.Background(), gateway.ReplaceGigPackagesRequest{
@@ -295,7 +359,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("validates question and media payloads", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = svc.ReplaceQuestions(context.Background(), gateway.ReplaceGigQuestionsRequest{
@@ -314,7 +378,7 @@ var _ = Describe("GigService", func() {
 	})
 
 	It("forwards cleaned gig state for all operations", func() {
-		svc, err := NewGig(pub, lg)
+		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 
 		pub.updateRes = &gateway.Gig{GigID: "gig-1"}
@@ -377,5 +441,102 @@ var _ = Describe("GigService", func() {
 		_, err = svc.Publish(context.Background(), gateway.PublishGigRequest{GigID: " gig-1 ", FreelancerID: " freelancer-1 "})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pub.publishReq).To(Equal(gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1"}))
+	})
+
+	It("loads public gig pages with reviews summary and freelancer", func() {
+		svc, err := NewGig(pub, review, user, lg)
+		Expect(err).NotTo(HaveOccurred())
+		pub.slugRes = &gateway.Gig{GigID: "019e706c-616e-7473-9c1a-838c33b75013", Slug: "my-gig-019e706c-616e-7473-9c1a-838c33b75013"}
+		review.reviewsRes = &gateway.GetGigReviewsResult{Reviews: &gateway.ReviewList{Items: []gateway.Review{{ReviewID: "review-1"}}}}
+		review.summaryRes = &gateway.ReviewSummary{TotalReviews: 1}
+		user.userRes = &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester"}
+
+		res, err := svc.GetBySlug(context.Background(), gateway.GetGigBySlugRequest{Username: "alex", Slug: "my-gig-019e706c-616e-7473-9c1a-838c33b75013"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res.Freelancer).NotTo(BeNil())
+		Expect(res.Freelancer.Username).To(Equal("alex"))
+		Expect(res.Freelancer.ReviewsSummary).NotTo(BeNil())
+		Expect(res.Freelancer.ReviewsSummary.TotalReviews).To(Equal(int64(1)))
+		Expect(review.reviewsReq.GigID).To(Equal("019e706c-616e-7473-9c1a-838c33b75013"))
+		Expect(review.reviewsReq.Cursor).To(Equal(""))
+		Expect(review.summaryReq.GigID).To(Equal("019e706c-616e-7473-9c1a-838c33b75013"))
+		Expect(review.sellerSummaryReq.Username).To(Equal("alex"))
+		Expect(user.usernameReq).To(Equal("alex"))
+	})
+
+	It("passes the cursor through to review lookup", func() {
+		svc, err := NewGig(pub, review, user, lg)
+		Expect(err).NotTo(HaveOccurred())
+		pub.slugRes = &gateway.Gig{GigID: "019e706c-616e-7473-9c1a-838c33b75013", Slug: "my-gig-019e706c-616e-7473-9c1a-838c33b75013"}
+
+		_, err = svc.GetBySlug(context.Background(), gateway.GetGigBySlugRequest{
+			Username: "alex",
+			Slug:     "my-gig-019e706c-616e-7473-9c1a-838c33b75013",
+			Cursor:   "abc",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(review.reviewsReq.Cursor).To(Equal("abc"))
+	})
+
+	It("returns not found when the username does not match the gig owner", func() {
+		svc, err := NewGig(pub, review, user, lg)
+		Expect(err).NotTo(HaveOccurred())
+		pub.slugRes = &gateway.Gig{
+			GigID:        "019e706c-616e-7473-9c1a-838c33b75013",
+			FreelancerID: "freelancer-1",
+			Slug:         "my-gig-019e706c-616e-7473-9c1a-838c33b75013",
+		}
+		user.userRes = &gateway.User{UserID: "freelancer-2", Username: "alex"}
+
+		res, err := svc.GetBySlug(context.Background(), gateway.GetGigBySlugRequest{
+			Username: "alex",
+			Slug:     "my-gig-019e706c-616e-7473-9c1a-838c33b75013",
+		})
+		Expect(res).To(BeNil())
+		Expect(err).To(MatchError(gateway.ErrGigNotFound))
+	})
+
+	It("returns not found when the requested slug is not canonical", func() {
+		svc, err := NewGig(pub, review, user, lg)
+		Expect(err).NotTo(HaveOccurred())
+		pub.slugRes = &gateway.Gig{
+			GigID:        "019e706c-616e-7473-9c1a-838c33b75013",
+			FreelancerID: "019e4767-c408-74d7-8c4a-3b7fcb2ab3cf",
+			Slug:         "my-gig-019e706c-616e-7473-9c1a-838c33b75013",
+		}
+		user.userRes = &gateway.User{UserID: "019e4767-c408-74d7-8c4a-3b7fcb2ab3cf", Username: "alex"}
+
+		res, err := svc.GetBySlug(context.Background(), gateway.GetGigBySlugRequest{
+			Username: "alex",
+			Slug:     "my-kgig-019e706c-616e-7473-9c1a-838c33b75013",
+		})
+		Expect(res).To(BeNil())
+		Expect(err).To(MatchError(gateway.ErrGigNotFound))
+	})
+
+	It("returns the gig when user and review enrichment fails", func() {
+		svc, err := NewGig(pub, review, user, lg)
+		Expect(err).NotTo(HaveOccurred())
+		pub.slugRes = &gateway.Gig{
+			GigID:        "019e706c-616e-7473-9c1a-838c33b75013",
+			FreelancerID: "019e4767-c408-74d7-8c4a-3b7fcb2ab3cf",
+			Slug:         "my-gig-019e706c-616e-7473-9c1a-838c33b75013",
+			Media:        []gateway.GigMedia{{GigID: "019e706c-616e-7473-9c1a-838c33b75013", URL: "https://example.com/media.jpg"}},
+		}
+		user.err = errors.New("user down")
+		review.reviewsErr = errors.New("reviews down")
+		review.summaryErr = errors.New("summary down")
+
+		res, err := svc.GetBySlug(context.Background(), gateway.GetGigBySlugRequest{
+			Username: "alex",
+			Slug:     "my-gig-019e706c-616e-7473-9c1a-838c33b75013",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res).NotTo(BeNil())
+		Expect(res.Freelancer).To(BeNil())
+		Expect(res.Reviews).To(BeNil())
+		Expect(res.ReviewsSummary).To(BeNil())
+		Expect(res.Media).To(HaveLen(1))
+		Expect(res.Media[0].URL).To(Equal("https://example.com/media.jpg"))
 	})
 })

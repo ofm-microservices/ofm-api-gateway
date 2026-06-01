@@ -12,6 +12,7 @@ import (
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 	reviewv1 "github.com/ofm-microservices/ofm-common/proto/review/v1"
 	searchv1 "github.com/ofm-microservices/ofm-common/proto/search/v1"
+	userv1 "github.com/ofm-microservices/ofm-common/proto/user/v1"
 )
 
 // Logger aliases the shared logger contract used by the gRPC adapter.
@@ -55,6 +56,7 @@ type GigClient interface {
 	ReplaceQuestions(ctx context.Context, req gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error)
 	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
+	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 	Close() error
 }
@@ -85,6 +87,15 @@ type OrderCheckoutClient interface {
 // ReviewClient is the gateway-facing gRPC adapter for review-service.
 type ReviewClient interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+	GetGigReviews(ctx context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error)
+	GetGigReviewsSummary(ctx context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error)
+	GetUserRatingSummaryByUsername(ctx context.Context, req gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error)
+	Close() error
+}
+
+// UserClient is the gateway-facing gRPC adapter for user-service.
+type UserClient interface {
+	GetDetailedUserByUsername(ctx context.Context, username string) (*gateway.User, error)
 	Close() error
 }
 
@@ -122,6 +133,8 @@ type GigMapper interface {
 	ToReplaceMediaResponse(res *gigv1.ReplaceMediaResponse) *gateway.Gig
 	ToGetDraftRequest(req gateway.GetGigDraftRequest) *gigv1.GetDraftRequest
 	ToGetDraftResponse(res *gigv1.GetDraftResponse) *gateway.Gig
+	ToGetBySlugRequest(req gateway.GetGigBySlugRequest) *gigv1.GetGigBySlugRequest
+	ToGetBySlugResponse(res *gigv1.GetGigBySlugResponse) *gateway.Gig
 	ToPublishRequest(req gateway.PublishGigRequest) *gigv1.PublishRequest
 	ToPublishResponse(res *gigv1.PublishResponse) *gateway.Gig
 	ToError(err error) error
@@ -166,6 +179,12 @@ type OrderCheckoutMapper interface {
 type ReviewMapper interface {
 	ToCreateReviewRequest(req gateway.CreateReviewRequest, buyerID string) *reviewv1.CreateReviewRequest
 	ToCreateReviewResponse(res *reviewv1.CreateReviewResponse) *gateway.CreateReviewResult
+	ToGetGigReviewsRequest(req gateway.GetGigReviewsRequest) *reviewv1.ListGigReviewsRequest
+	ToGetGigReviewsResponse(res *reviewv1.ListGigReviewsResponse) *gateway.GetGigReviewsResult
+	ToGetGigReviewsSummaryRequest(req gateway.GetGigReviewsSummaryRequest) *reviewv1.GetGigRatingSummaryRequest
+	ToGetGigReviewsSummaryResponse(res *reviewv1.RatingSummary) *gateway.ReviewSummary
+	ToGetUserRatingSummaryByUsernameRequest(req gateway.GetUserRatingSummaryByUsernameRequest) *reviewv1.GetUserRatingSummaryByUsernameRequest
+	ToGetUserRatingSummaryByUsernameResponse(res *reviewv1.RatingSummary) *gateway.ReviewSummary
 	ToError(err error) error
 }
 
@@ -175,6 +194,17 @@ type SearchMapper interface {
 	ToSearchRequest(req gateway.SearchRequest) *searchv1.SearchRequest
 	ToSearchResponse(res *searchv1.SearchResponse) *gateway.SearchResponse
 }
+
+// UserMapper translates between gateway user types and the shared user gRPC
+// contract.
+type UserMapper interface {
+	ToGetDetailedUserRequest(username string) *userv1.GetDetailedUserByUsernameRequest
+	ToGetDetailedUserResponse(res *userv1.GetDetailedUserByUsernameResponse) *gateway.User
+	ToError(err error) error
+}
+
+// UserServiceConfig aliases the outbound user-service gRPC client configuration.
+type UserServiceConfig = config.UserServiceConfig
 
 // RegistrationSagaConfig aliases the outbound saga gRPC client configuration.
 type RegistrationSagaConfig = config.RegistrationSagaConfig
