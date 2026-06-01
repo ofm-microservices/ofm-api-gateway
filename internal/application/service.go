@@ -301,6 +301,29 @@ func (s *authSessionService) SignIn(ctx context.Context, req gateway.SignInReque
 	return result, nil
 }
 
+func (s *authSessionService) Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*gateway.AuthTokensResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	refreshToken := strings.TrimSpace(req.RefreshToken)
+	if refreshToken == "" {
+		return nil, gateway.ErrInvalidRefreshToken
+	}
+
+	result, err := s.client.Refresh(ctx, gateway.RefreshTokensRequest{
+		RefreshToken: refreshToken,
+	})
+	if err != nil {
+		log.Error("failed to refresh tokens",
+			logging.Operation("auth.refresh"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error) {
 	log := logging.WithContext(ctx, s.log)
 	buyerID := strings.TrimSpace(req.BuyerID)

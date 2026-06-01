@@ -62,6 +62,10 @@ func (authSessionServiceStub) SignIn(context.Context, gateway.SignInRequest) (*g
 	return &gateway.AuthTokensResult{TokenType: "Bearer"}, nil
 }
 
+func (authSessionServiceStub) Refresh(context.Context, gateway.RefreshTokensRequest) (*gateway.AuthTokensResult, error) {
+	return &gateway.AuthTokensResult{TokenType: "Bearer"}, nil
+}
+
 func (authSessionServiceStub) Close() error { return nil }
 
 type registrationServiceStub struct{}
@@ -97,6 +101,10 @@ func (h *authHandlerStub) HandleSignUp(*fiber.Ctx) error {
 }
 
 func (h *authHandlerStub) HandleSignIn(*fiber.Ctx) error {
+	return nil
+}
+
+func (h *authHandlerStub) HandleRefresh(*fiber.Ctx) error {
 	return nil
 }
 

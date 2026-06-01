@@ -85,7 +85,23 @@ func (m *authSessionMapper) ToSignInRequest(req gateway.SignInRequest) *authv1.S
 	}
 }
 
-func (m *authSessionMapper) ToAuthTokensResult(res *authv1.AuthTokensResponse) *AuthTokensResult {
+func (m *authSessionMapper) ToRefreshRequest(req gateway.RefreshTokensRequest) *authv1.RefreshRequest {
+	return &authv1.RefreshRequest{
+		RefreshToken: req.RefreshToken,
+	}
+}
+
+func (m *authSessionMapper) ToSignInResult(res *authv1.SignInResponse) *AuthTokensResult {
+	return &AuthTokensResult{
+		UserID:       res.GetUserId(),
+		AccessToken:  res.GetAccessToken(),
+		RefreshToken: res.GetRefreshToken(),
+		TokenType:    res.GetTokenType(),
+		ExpiresIn:    res.GetExpiresIn(),
+	}
+}
+
+func (m *authSessionMapper) ToRefreshResult(res *authv1.RefreshResponse) *AuthTokensResult {
 	return &AuthTokensResult{
 		UserID:       res.GetUserId(),
 		AccessToken:  res.GetAccessToken(),
@@ -110,11 +126,34 @@ func (m *authSessionMapper) ToError(err error) error {
 			return gateway.ErrInvalidIdentifier
 		case "invalid password":
 			return gateway.ErrInvalidPassword
+		case "invalid refresh token":
+			return gateway.ErrInvalidRefreshToken
 		default:
 			return gateway.ErrInvalidCredentials
 		}
 	default:
 		return gateway.ErrInvalidCredentials
+	}
+}
+
+func (m *authSessionMapper) ToRefreshError(err error) error {
+	st, ok := status.FromError(err)
+	if !ok {
+		return gateway.ErrFailedToRefreshTokens
+	}
+
+	switch st.Code() {
+	case codes.Unauthenticated:
+		return gateway.ErrInvalidCredentials
+	case codes.InvalidArgument:
+		switch st.Message() {
+		case "invalid refresh token":
+			return gateway.ErrInvalidRefreshToken
+		default:
+			return gateway.ErrInvalidRefreshToken
+		}
+	default:
+		return gateway.ErrFailedToRefreshTokens
 	}
 }
 

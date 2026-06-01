@@ -48,7 +48,17 @@ func (c *authSessionClient) SignIn(ctx context.Context, req gateway.SignInReques
 		return nil, c.mapr.ToError(err)
 	}
 
-	return c.mapr.ToAuthTokensResult(response), nil
+	return c.mapr.ToSignInResult(response), nil
+}
+
+// Refresh asks auth-service to rotate a refresh token and return new tokens.
+func (c *authSessionClient) Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*AuthTokensResult, error) {
+	response, err := c.cl.Refresh(ctx, c.mapr.ToRefreshRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToRefreshError(err)
+	}
+
+	return c.mapr.ToRefreshResult(response), nil
 }
 
 // Close closes the underlying auth-session gRPC client connection.
