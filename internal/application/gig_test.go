@@ -111,9 +111,15 @@ func (s *reviewClientStub) GetUserRatingSummaryByUsername(_ context.Context, req
 func (s *reviewClientStub) Close() error { return nil }
 
 type userClientStub struct {
+	userIDReq   string
 	usernameReq string
 	userRes     *gateway.User
 	err         error
+}
+
+func (s *userClientStub) GetUserPreviewByID(_ context.Context, userID string) (*gateway.User, error) {
+	s.userIDReq = userID
+	return s.userRes, s.err
 }
 
 func (s *userClientStub) GetDetailedUserByUsername(_ context.Context, username string) (*gateway.User, error) {

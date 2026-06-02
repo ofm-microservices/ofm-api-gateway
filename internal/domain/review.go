@@ -54,7 +54,7 @@ type ReviewAuthor struct {
 	UserID      string `json:"user_id,omitempty"`
 	Username    string `json:"username,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
-	AvatarURL   string `json:"avatar_url,omitempty"`
+	AvatarURL   string `json:"avatar_url"`
 }
 
 // Review represents one public gig review returned by api-gateway.

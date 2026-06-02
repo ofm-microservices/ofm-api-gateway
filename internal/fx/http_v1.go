@@ -24,9 +24,11 @@ var HTTPV1Module = fx.Options(
 func ProvideHTTPV1AuthHandler(
 	registration service.RegistrationService,
 	session service.AuthSessionService,
+	me service.AuthMeService,
+	cfg *config.Config,
 	lg logging.Logger,
 ) (httpserver.AuthHandler, error) {
-	return httpserver.NewAuthHandler(registration, session, lg)
+	return httpserver.NewAuthHandler(registration, session, me, cfg.JWT.AccessSecret, lg)
 }
 
 // ProvideHTTPV1GigHandler constructs the versioned gig HTTP handler.

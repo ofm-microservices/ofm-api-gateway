@@ -6,6 +6,7 @@ var (
 	ErrInvalidEmail                 = errors.New("invalid email")
 	ErrInvalidPassword              = errors.New("invalid password")
 	ErrInvalidUsername              = errors.New("invalid username")
+	ErrInvalidUserID                = errors.New("invalid user id")
 	ErrUserNotFound                 = errors.New("user not found")
 	ErrInvalidSessionID             = errors.New("invalid session id")
 	ErrInvalidClientID              = errors.New("invalid client id")

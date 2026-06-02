@@ -48,6 +48,14 @@ func NewUserClient(cfg UserServiceConfig, log Logger) (UserClient, error) {
 	}, nil
 }
 
+func (c *userClient) GetUserPreviewByID(ctx context.Context, userID string) (*gateway.User, error) {
+	res, err := c.cl.GetUserPreviewByID(ctx, c.mapr.ToGetUserPreviewRequest(strings.TrimSpace(userID)))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToGetUserPreviewResponse(res), nil
+}
+
 func (c *userClient) GetDetailedUserByUsername(ctx context.Context, username string) (*gateway.User, error) {
 	res, err := c.cl.GetDetailedUserByUsername(ctx, c.mapr.ToGetDetailedUserRequest(strings.TrimSpace(username)))
 	if err != nil {

@@ -58,6 +58,8 @@ func (tokenIssuerStub) Close() error { return nil }
 
 type authSessionServiceStub struct{}
 
+type authMeServiceStub struct{}
+
 func (authSessionServiceStub) SignIn(context.Context, gateway.SignInRequest) (*gateway.AuthTokensResult, error) {
 	return &gateway.AuthTokensResult{TokenType: "Bearer"}, nil
 }
@@ -71,6 +73,10 @@ func (authSessionServiceStub) SignOut(context.Context, gateway.SignOutRequest) e
 }
 
 func (authSessionServiceStub) Close() error { return nil }
+
+func (authMeServiceStub) GetMe(context.Context, string) (*gateway.User, error) {
+	return &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester", AvatarURL: "https://example.com/avatar.png"}, nil
+}
 
 type registrationServiceStub struct{}
 
@@ -98,6 +104,9 @@ func (h *authHandlerStub) RegisterRoutes(router fiber.Router) {
 	router.Post("/auth/sign-in", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	})
+	router.Get("/auth/me", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
 }
 
 func (h *authHandlerStub) HandleSignUp(*fiber.Ctx) error {
@@ -113,6 +122,10 @@ func (h *authHandlerStub) HandleRefresh(*fiber.Ctx) error {
 }
 
 func (h *authHandlerStub) HandleSignOut(*fiber.Ctx) error {
+	return nil
+}
+
+func (h *authHandlerStub) HandleMe(*fiber.Ctx) error {
 	return nil
 }
 
@@ -266,6 +279,10 @@ func (reviewClientStub) GetUserRatingSummaryByUsername(context.Context, gateway.
 func (reviewClientStub) Close() error { return nil }
 
 type userClientStub struct{}
+
+func (userClientStub) GetUserPreviewByID(context.Context, string) (*gateway.User, error) {
+	return &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester", AvatarURL: "https://example.com/avatar.png"}, nil
+}
 
 func (userClientStub) GetDetailedUserByUsername(context.Context, string) (*gateway.User, error) {
 	return &gateway.User{UserID: "user-1", Username: "alex"}, nil
@@ -435,7 +452,7 @@ var _ = Describe("FX providers", func() {
 	})
 
 	It("constructs the v1 auth handler", func() {
-		handler, err := ProvideHTTPV1AuthHandler(registrationServiceStub{}, authSessionServiceStub{}, lg)
+		handler, err := ProvideHTTPV1AuthHandler(registrationServiceStub{}, authSessionServiceStub{}, authMeServiceStub{}, cfg, lg)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(handler).NotTo(BeNil())
