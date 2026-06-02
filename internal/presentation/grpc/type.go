@@ -108,6 +108,7 @@ type ReviewClient interface {
 
 // UserClient is the gateway-facing gRPC adapter for user-service.
 type UserClient interface {
+	GetUserPreviewByID(ctx context.Context, userID string) (*gateway.User, error)
 	GetDetailedUserByUsername(ctx context.Context, username string) (*gateway.User, error)
 	Close() error
 }
@@ -224,6 +225,8 @@ type SearchMapper interface {
 // UserMapper translates between gateway user types and the shared user gRPC
 // contract.
 type UserMapper interface {
+	ToGetUserPreviewRequest(userID string) *userv1.GetUserPreviewByIDRequest
+	ToGetUserPreviewResponse(res *userv1.GetUserPreviewByIDResponse) *gateway.User
 	ToGetDetailedUserRequest(username string) *userv1.GetDetailedUserByUsernameRequest
 	ToGetDetailedUserResponse(res *userv1.GetDetailedUserByUsernameResponse) *gateway.User
 	ToError(err error) error

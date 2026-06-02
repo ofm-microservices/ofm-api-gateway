@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrNilRegistrationService      = errors.New("registration service is nil")
 	ErrNilAuthSessionService       = errors.New("auth session service is nil")
+	ErrNilAuthMeService            = errors.New("auth me service is nil")
 	ErrNilGigService               = errors.New("gig service is nil")
 	ErrNilOrderService             = errors.New("order service is nil")
 	ErrNilReviewService            = errors.New("review service is nil")

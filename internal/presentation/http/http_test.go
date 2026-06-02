@@ -28,6 +28,8 @@ func TestHTTP(t *testing.T) {
 
 type authSessionServiceStub struct{}
 
+type authMeServiceStub struct{}
+
 func (authSessionServiceStub) SignIn(context.Context, gateway.SignInRequest) (*gateway.AuthTokensResult, error) {
 	return &gateway.AuthTokensResult{}, nil
 }
@@ -42,11 +44,16 @@ func (authSessionServiceStub) SignOut(context.Context, gateway.SignOutRequest) e
 
 func (authSessionServiceStub) Close() error { return nil }
 
+func (authMeServiceStub) GetMe(context.Context, string) (*gateway.User, error) {
+	return &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester", AvatarURL: "https://example.com/avatar.png"}, nil
+}
+
 var _ = Describe("AuthHandler", func() {
 	var (
 		ctrl    *gomock.Controller
 		service *MockRegistrationService
 		session authSessionServiceStub
+		me      authMeServiceStub
 		logger  logging.Logger
 	)
 
@@ -54,6 +61,7 @@ var _ = Describe("AuthHandler", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		service = NewMockRegistrationService(ctrl)
 		session = authSessionServiceStub{}
+		me = authMeServiceStub{}
 
 		var err error
 		logger, err = logging.New("api-gateway", "test", "debug")
@@ -66,15 +74,23 @@ var _ = Describe("AuthHandler", func() {
 
 	Describe("NewAuthHandler", func() {
 		It("validates nil collaborators", func() {
-			handler, err := NewAuthHandler(nil, session, logger)
+			handler, err := NewAuthHandler(nil, session, me, "secret", logger)
 			Expect(handler).To(BeNil())
 			Expect(err).To(MatchError(ErrNilRegistrationService))
 
-			handler, err = NewAuthHandler(service, nil, logger)
+			handler, err = NewAuthHandler(service, nil, me, "secret", logger)
 			Expect(handler).To(BeNil())
 			Expect(err).To(MatchError(ErrNilAuthSessionService))
 
-			handler, err = NewAuthHandler(service, session, nil)
+			handler, err = NewAuthHandler(service, session, nil, "secret", logger)
+			Expect(handler).To(BeNil())
+			Expect(err).To(MatchError(ErrNilAuthMeService))
+
+			handler, err = NewAuthHandler(service, session, me, "", logger)
+			Expect(handler).To(BeNil())
+			Expect(err).To(MatchError(errEmptyJWTSecret))
+
+			handler, err = NewAuthHandler(service, session, me, "secret", nil)
 			Expect(handler).To(BeNil())
 			Expect(err).To(MatchError(ErrNilLogger))
 		})
@@ -86,7 +102,7 @@ var _ = Describe("AuthHandler", func() {
 		)
 
 		BeforeEach(func() {
-			handler, err := NewAuthHandler(service, session, logger)
+			handler, err := NewAuthHandler(service, session, me, "secret", logger)
 			Expect(err).NotTo(HaveOccurred())
 
 			app = fiber.New()
@@ -230,11 +246,41 @@ var _ = Describe("AuthHandler", func() {
 		})
 	})
 
+	Describe("auth me endpoint", func() {
+		var app *fiber.App
+
+		BeforeEach(func() {
+			handler, err := NewAuthHandler(service, session, me, "secret", logger)
+			Expect(err).NotTo(HaveOccurred())
+
+			app = fiber.New()
+			v1 := app.Group("/v1")
+			handler.RegisterRoutes(v1)
+		})
+
+		It("rejects a missing bearer token", func() {
+			resp, err := app.Test(jsonRequest("GET", "/v1/auth/me", ""), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusUnauthorized))
+		})
+
+		It("returns the current user preview from the bearer subject", func() {
+			req := jsonRequest("GET", "/v1/auth/me", "")
+			req.Header.Set("Authorization", "Bearer "+signedJWT("user-1", "secret"))
+
+			resp, err := app.Test(req, -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(fiber.StatusOK))
+			body, _ := io.ReadAll(resp.Body)
+			Expect(string(body)).To(MatchJSON(`{"user_id":"user-1","username":"alex","display_name":"Alex Tester","avatar_url":"https://example.com/avatar.png"}`))
+		})
+	})
+
 	Describe("verify-email endpoint", func() {
 		var app *fiber.App
 
 		BeforeEach(func() {
-			handler, err := NewAuthHandler(service, session, logger)
+			handler, err := NewAuthHandler(service, session, me, "secret", logger)
 			Expect(err).NotTo(HaveOccurred())
 			app = fiber.New()
 			v1 := app.Group("/v1")
@@ -300,7 +346,7 @@ var _ = Describe("AuthHandler", func() {
 		var app *fiber.App
 
 		BeforeEach(func() {
-			handler, err := NewAuthHandler(service, session, logger)
+			handler, err := NewAuthHandler(service, session, me, "secret", logger)
 			Expect(err).NotTo(HaveOccurred())
 			app = fiber.New()
 			v1 := app.Group("/v1")

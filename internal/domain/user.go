@@ -7,7 +7,7 @@ type User struct {
 	Username       string         `json:"username,omitempty"`
 	DisplayName    string         `json:"display_name,omitempty"`
 	AvatarID       string         `json:"avatar_id,omitempty"`
-	AvatarURL      string         `json:"avatar_url,omitempty"`
+	AvatarURL      string         `json:"avatar_url"`
 	About          string         `json:"about,omitempty"`
 	ReviewsSummary *ReviewSummary `json:"reviews_summary,omitempty"`
 }

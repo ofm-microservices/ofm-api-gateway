@@ -21,6 +21,11 @@ type authSessionService struct {
 	log    Logger
 }
 
+type authMeService struct {
+	client UserClient
+	log    Logger
+}
+
 type orderService struct {
 	client OrderCheckoutClient
 	log    Logger
@@ -74,6 +79,22 @@ func NewAuthSession(client AuthSessionClient, log Logger) (AuthSessionService, e
 	return &authSessionService{
 		client: client,
 		log:    log.With(logging.String("module", "auth-session-application")),
+	}, nil
+}
+
+// NewAuthMe constructs the application service responsible for resolving the
+// current authenticated user preview from user-service.
+func NewAuthMe(client UserClient, log Logger) (AuthMeService, error) {
+	if client == nil {
+		return nil, ErrNilUserClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &authMeService{
+		client: client,
+		log:    log.With(logging.String("module", "auth-me-application")),
 	}, nil
 }
 
@@ -637,6 +658,25 @@ func (s *reviewService) CreateReview(ctx context.Context, req gateway.CreateRevi
 
 func (s *searchService) Search(ctx context.Context, req gateway.SearchRequest) (*gateway.SearchResponse, error) {
 	return s.client.Search(ctx, req)
+}
+
+func (s *authMeService) GetMe(ctx context.Context, userID string) (*gateway.User, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+
+	user, err := s.client.GetUserPreviewByID(ctx, userID)
+	if err != nil {
+		s.log.Error("failed to resolve auth me user preview",
+			logging.Operation("auth_me.get_me"),
+			logging.String("user_id", userID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func validRealtimeConnectionID(id string) bool {

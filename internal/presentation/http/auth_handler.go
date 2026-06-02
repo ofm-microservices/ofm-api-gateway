@@ -12,24 +12,35 @@ import (
 type authHandler struct {
 	registration RegistrationService
 	session      AuthSessionService
+	me           AuthMeService
+	auth         GigPrincipalResolver
 	log          logging.Logger
 }
 
 // NewAuthHandler constructs the auth HTTP handler group for signup requests.
-func NewAuthHandler(registration RegistrationService, session AuthSessionService, log logging.Logger) (AuthHandler, error) {
+func NewAuthHandler(registration RegistrationService, session AuthSessionService, me AuthMeService, jwtSecret string, log logging.Logger) (AuthHandler, error) {
 	if registration == nil {
 		return nil, ErrNilRegistrationService
 	}
 	if session == nil {
 		return nil, ErrNilAuthSessionService
 	}
+	if me == nil {
+		return nil, ErrNilAuthMeService
+	}
 	if log == nil {
 		return nil, ErrNilLogger
+	}
+	auth, err := newJWTPrincipalResolver(jwtSecret, log)
+	if err != nil {
+		return nil, err
 	}
 
 	return &authHandler{
 		registration: registration,
 		session:      session,
+		me:           me,
+		auth:         auth,
 		log:          log.With(logging.String("module", "http-auth-handler")),
 	}, nil
 }
@@ -42,6 +53,7 @@ func (h *authHandler) RegisterRoutes(router fiber.Router) {
 	auth.Post("/sign-in", h.HandleSignIn)
 	auth.Post("/refresh", h.HandleRefresh)
 	auth.Post("/sign-out", h.HandleSignOut)
+	auth.Get("/me", h.auth.Middleware(), h.HandleMe)
 	auth.Post("/sign-up/verify-email", h.HandleVerifyEmail)
 	auth.Post("/sign-up/complete", h.HandleCompleteRegistration)
 }
@@ -171,6 +183,41 @@ func (h *authHandler) HandleSignOut(c *fiber.Ctx) error {
 		logging.DurationMS(time.Since(started)),
 	)
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// HandleMe validates the bearer token and returns the authenticated user's preview profile.
+func (h *authHandler) HandleMe(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+	userID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	user, err := h.me.GetMe(c.UserContext(), userID)
+	if err != nil {
+		switch err {
+		case gateway.ErrUserNotFound:
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
+		case gateway.ErrInvalidUserID:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+		default:
+			log.Error("request failed",
+				logging.Operation("http.auth.me_error"),
+				logging.Attempt(1),
+				logging.Retryable(false),
+				logging.Err(err),
+			)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+		}
+	}
+
+	log.Info("me request accepted",
+		logging.Operation("http.auth.me"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("user_id", userID),
+	)
+	return c.Status(fiber.StatusOK).JSON(user)
 }
 
 // MapSignUpError translates signup failures into stable HTTP responses.

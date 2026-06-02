@@ -11,6 +11,7 @@ import (
 var ServiceModule = fx.Options(
 	fx.Provide(ProvideRegistrationService),
 	fx.Provide(ProvideAuthSessionService),
+	fx.Provide(ProvideAuthMeService),
 	fx.Provide(ProvideGigService),
 	fx.Provide(ProvideOrderService),
 	fx.Provide(ProvidePaymentOnboardingService),
@@ -33,6 +34,15 @@ func ProvideAuthSessionService(
 	lg logging.Logger,
 ) (service.AuthSessionService, error) {
 	return service.NewAuthSession(client, lg)
+}
+
+// ProvideAuthMeService constructs the application service that resolves the
+// current authenticated user's preview payload.
+func ProvideAuthMeService(
+	client service.UserClient,
+	lg logging.Logger,
+) (service.AuthMeService, error) {
+	return service.NewAuthMe(client, lg)
 }
 
 // ProvideGigService constructs the gig application service.

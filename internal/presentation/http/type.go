@@ -15,6 +15,9 @@ type RegistrationService = service.RegistrationService
 // AuthSessionService aliases the sign-in application boundary used by the HTTP layer.
 type AuthSessionService = service.AuthSessionService
 
+// AuthMeService aliases the current-user application boundary used by the HTTP layer.
+type AuthMeService = service.AuthMeService
+
 // AuthHandler exposes the auth HTTP routes owned by api-gateway.
 type AuthHandler interface {
 	RegisterRoutes(router fiber.Router)
@@ -22,6 +25,7 @@ type AuthHandler interface {
 	HandleSignIn(c *fiber.Ctx) error
 	HandleRefresh(c *fiber.Ctx) error
 	HandleSignOut(c *fiber.Ctx) error
+	HandleMe(c *fiber.Ctx) error
 	HandleVerifyEmail(c *fiber.Ctx) error
 	HandleCompleteRegistration(c *fiber.Ctx) error
 }

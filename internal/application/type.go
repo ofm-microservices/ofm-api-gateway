@@ -50,6 +50,12 @@ type AuthSessionService interface {
 	SignOut(ctx context.Context, req gateway.SignOutRequest) error
 }
 
+// AuthMeService validates the current access token subject and resolves a
+// compact user preview for the authenticated identity.
+type AuthMeService interface {
+	GetMe(ctx context.Context, userID string) (*gateway.User, error)
+}
+
 // GigService validates the public gig draft workflow and delegates
 // orchestration to gig-service.
 type GigService interface {
@@ -66,6 +72,7 @@ type GigService interface {
 // UserClient is the outbound gRPC boundary for user-service.
 type UserClient interface {
 	GetDetailedUserByUsername(ctx context.Context, username string) (*gateway.User, error)
+	GetUserPreviewByID(ctx context.Context, userID string) (*gateway.User, error)
 	Close() error
 }
 
