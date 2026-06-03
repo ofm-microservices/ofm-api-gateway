@@ -29,6 +29,7 @@ type gigServiceStub struct {
 	mediaReq     gateway.ReplaceGigMediaRequest
 	draftReq     gateway.GetGigDraftRequest
 	slugReq      gateway.GetGigBySlugRequest
+	previewReq   gateway.GetPreviewGigsByFreelancerUsernameRequest
 	publishReq   gateway.PublishGigRequest
 
 	createRes    *gateway.Gig
@@ -38,6 +39,7 @@ type gigServiceStub struct {
 	mediaRes     *gateway.Gig
 	draftRes     *gateway.Gig
 	slugRes      *gateway.Gig
+	previewRes   *gateway.GigPreviewList
 	publishRes   *gateway.Gig
 
 	err error
@@ -76,6 +78,11 @@ func (s *gigServiceStub) GetDraft(_ context.Context, req gateway.GetGigDraftRequ
 func (s *gigServiceStub) GetBySlug(_ context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
 	s.slugReq = req
 	return s.slugRes, s.err
+}
+
+func (s *gigServiceStub) GetPreviewGigsByFreelancerUsername(_ context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
+	s.previewReq = req
+	return s.previewRes, s.err
 }
 
 func (s *gigServiceStub) Publish(_ context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
@@ -192,6 +199,7 @@ var _ = Describe("GigHandler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(fiber.StatusAccepted))
 		Expect(service.publishReq.FreelancerID).To(Equal("freelancer-1"))
+		Expect(service.publishReq.Username).To(Equal("freelancer-1"))
 	})
 
 	It("loads a public gig by slug without auth", func() {
@@ -202,6 +210,15 @@ var _ = Describe("GigHandler", func() {
 		Expect(service.slugReq.Username).To(Equal("alex"))
 		Expect(service.slugReq.Slug).To(Equal("my-gig-019e706c-616e-7473-9c1a-838c33b75013"))
 		Expect(service.slugReq.Cursor).To(Equal("abc"))
+	})
+
+	It("loads freelancer preview gigs by username without auth", func() {
+		service.previewRes = &gateway.GigPreviewList{Items: []gateway.GigPreview{{GigID: "gig-1"}}, HasMore: false}
+		resp, err := app.Test(gigJSONRequest("GET", "/v1/users/alex/gigs?cursor=abc", "", ""), -1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(fiber.StatusOK))
+		Expect(service.previewReq.Username).To(Equal("alex"))
+		Expect(service.previewReq.Cursor).To(Equal("abc"))
 	})
 
 	It("returns not found for malformed public gig slugs", func() {
@@ -293,6 +310,7 @@ func signedJWT(subject, secret string) string {
 	header := map[string]string{"alg": "HS256", "typ": "JWT"}
 	claims := map[string]any{
 		"sub": subject,
+		"username": subject,
 		"iat": now.Unix(),
 		"exp": now.Add(time.Hour).Unix(),
 	}

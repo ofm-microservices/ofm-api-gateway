@@ -57,6 +57,14 @@ func (c *reviewClient) GetGigReviews(ctx context.Context, req gateway.GetGigRevi
 	return c.mapr.ToGetGigReviewsResponse(res), nil
 }
 
+func (c *reviewClient) GetReviewsBySellerUsername(ctx context.Context, req gateway.GetReviewsBySellerUsernameRequest) (*gateway.GetReviewsBySellerUsernameResult, error) {
+	res, err := c.cl.GetReviewsBySellerUsername(ctx, c.mapr.ToGetReviewsBySellerUsernameRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToGetReviewsBySellerUsernameResponse(res), nil
+}
+
 func (c *reviewClient) GetGigReviewsSummary(ctx context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error) {
 	res, err := c.cl.GetGigRatingSummary(ctx, c.mapr.ToGetGigReviewsSummaryRequest(req))
 	if err != nil {

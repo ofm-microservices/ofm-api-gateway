@@ -73,6 +73,7 @@ func (s *gigService) UpdateBasicInfo(ctx context.Context, req gateway.UpdateGigB
 		GigID:        normalized.gigID,
 		FreelancerID: normalized.freelancerID,
 		Title:        strings.TrimSpace(req.Title),
+		ShortInfo:    strings.TrimSpace(req.ShortInfo),
 		Description:  strings.TrimSpace(req.Description),
 		CategoryID:   req.CategoryID,
 		Currency:     strings.TrimSpace(req.Currency),
@@ -259,15 +260,31 @@ func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequ
 	return out.gig, nil
 }
 
+func (s *gigService) GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		return nil, gateway.ErrInvalidUsername
+	}
+	return s.client.GetPreviewGigsByFreelancerUsername(ctx, gateway.GetPreviewGigsByFreelancerUsernameRequest{
+		Username: username,
+		Cursor:   strings.TrimSpace(req.Cursor),
+	})
+}
+
 func (s *gigService) Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
 	normalized, err := normalizeGigBaseRequest(req.GigID, req.FreelancerID)
 	if err != nil {
 		return nil, err
 	}
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		return nil, gateway.ErrInvalidUsername
+	}
 
 	return s.client.Publish(ctx, gateway.PublishGigRequest{
 		GigID:        normalized.gigID,
 		FreelancerID: normalized.freelancerID,
+		Username:     username,
 	})
 }
 

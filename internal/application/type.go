@@ -66,6 +66,7 @@ type GigService interface {
 	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
 	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
+	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 }
 
@@ -86,6 +87,7 @@ type GigPublisher interface {
 	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
 	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
+	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 }
 
@@ -115,6 +117,7 @@ type OrderCheckoutClient interface {
 type ReviewClient interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
 	GetGigReviews(ctx context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error)
+	GetReviewsBySellerUsername(ctx context.Context, req gateway.GetReviewsBySellerUsernameRequest) (*gateway.ListSellerReviewsResult, error)
 	GetGigReviewsSummary(ctx context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error)
 	GetUserRatingSummaryByUsername(ctx context.Context, req gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error)
 	Close() error
@@ -144,6 +147,7 @@ type OrderService interface {
 // ReviewService validates public review requests and delegates to review-service.
 type ReviewService interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+	GetReviewsBySellerUsername(ctx context.Context, req gateway.GetReviewsBySellerUsernameRequest) (*gateway.ListSellerReviewsResult, error)
 }
 
 // SearchService validates public search requests and delegates to search-service.
@@ -160,6 +164,12 @@ type PaymentOnboardingService interface {
 // PublicGigService resolves the public gig detail page with review enrichment.
 type PublicGigService interface {
 	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
+	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
+}
+
+// UserProfileService resolves the composite public user profile page.
+type UserProfileService interface {
+	GetUserProfile(ctx context.Context, req gateway.GetUserProfileRequest) (*gateway.UserProfile, error)
 }
 
 // PaymentOnboardingPublisher is the outbound boundary used to start

@@ -13,6 +13,7 @@ var ServiceModule = fx.Options(
 	fx.Provide(ProvideAuthSessionService),
 	fx.Provide(ProvideAuthMeService),
 	fx.Provide(ProvideGigService),
+	fx.Provide(ProvideUserProfileService),
 	fx.Provide(ProvideOrderService),
 	fx.Provide(ProvidePaymentOnboardingService),
 	fx.Provide(ProvideReviewService),
@@ -53,6 +54,16 @@ func ProvideGigService(
 	lg logging.Logger,
 ) (service.GigService, error) {
 	return service.NewGig(client, review, user, lg)
+}
+
+// ProvideUserProfileService constructs the composite public user profile application service.
+func ProvideUserProfileService(
+	gigs service.GigService,
+	reviews service.ReviewService,
+	users service.UserClient,
+	lg logging.Logger,
+) (service.UserProfileService, error) {
+	return service.NewUserProfile(gigs, reviews, users, lg)
 }
 
 // ProvideOrderService constructs the order application service.

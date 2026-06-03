@@ -42,6 +42,7 @@ func NewGigHandler(service GigService, jwtSecret string, log logging.Logger) (Gi
 // RegisterRoutes mounts gig routes under the router it receives.
 func (h *gigHandler) RegisterRoutes(router fiber.Router) {
 	gigs := router.Group("/users/:username/gigs")
+	gigs.Get("", h.HandleGetPreviewGigsByFreelancerUsername)
 	gigs.Get("/*", h.HandleGetBySlug)
 
 	authGigs := router.Group("/gigs")
@@ -203,6 +204,19 @@ func (h *gigHandler) HandleGetBySlug(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
+// HandleGetPreviewGigsByFreelancerUsername loads the freelancer preview page by username.
+func (h *gigHandler) HandleGetPreviewGigsByFreelancerUsername(c *fiber.Ctx) error {
+	result, err := h.service.GetPreviewGigsByFreelancerUsername(c.UserContext(), gateway.GetPreviewGigsByFreelancerUsernameRequest{
+		Username: c.Params("username"),
+		Cursor:   c.Query("cursor"),
+	})
+	if err != nil {
+		return h.mapGigError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
 // HandlePublish publishes a complete gig draft.
 func (h *gigHandler) HandlePublish(c *fiber.Ctx) error {
 	req := gateway.PublishGigRequest{
@@ -212,7 +226,12 @@ func (h *gigHandler) HandlePublish(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
+	username, err := h.auth.Username(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	req.FreelancerID = freelancerID
+	req.Username = username
 
 	result, err := h.service.Publish(c.UserContext(), req)
 	if err != nil {

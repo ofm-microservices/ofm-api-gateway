@@ -2,7 +2,7 @@ package gateway
 
 // SignUpRequest is the public gateway payload used to start registration.
 type SignUpRequest struct {
-	ClientID  string `json:"client_id,omitempty"`
+	ClientID  string `json:"client_id"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	Username  string `json:"username"`
@@ -13,13 +13,13 @@ type SignUpRequest struct {
 // SignUpResult is the immediate response returned after the saga session is
 // created.
 type SignUpResult struct {
-	SessionID     string `json:"session_id,omitempty"`
-	ClientID      string `json:"client_id,omitempty"`
-	UserID        string `json:"user_id,omitempty"`
+	SessionID     string `json:"session_id"`
+	ClientID      string `json:"client_id"`
+	UserID        string `json:"user_id"`
 	Status        string `json:"status"`
-	ConflictState string `json:"conflict_state,omitempty"`
-	UsernameTaken bool   `json:"username_taken,omitempty"`
-	EmailTaken    bool   `json:"email_taken,omitempty"`
+	ConflictState string `json:"conflict_state"`
+	UsernameTaken bool   `json:"username_taken"`
+	EmailTaken    bool   `json:"email_taken"`
 }
 
 // VerifyEmailRequest is the public gateway payload for submitting a

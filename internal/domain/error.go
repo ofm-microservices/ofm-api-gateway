@@ -43,6 +43,7 @@ var (
 	ErrInvalidOrderReason           = errors.New("invalid order reason")
 	ErrInvalidReviewContent         = errors.New("invalid review content")
 	ErrInvalidBuyerID               = errors.New("invalid buyer id")
+	ErrInvalidSellerID              = errors.New("invalid seller id")
 	ErrReviewNotFound               = errors.New("review not found")
 	ErrReviewOwnerMismatch          = errors.New("review owner mismatch")
 	ErrInvalidFreelancerOnboarding  = errors.New("invalid freelancer onboarding")

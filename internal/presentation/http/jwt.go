@@ -101,6 +101,17 @@ func (r *jwtPrincipalResolver) Claims(c *fiber.Ctx) (*commonjwt.Claims, error) {
 	return value, nil
 }
 
+func (r *jwtPrincipalResolver) Username(c *fiber.Ctx) (string, error) {
+	claims, err := r.Claims(c)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(claims.Username) == "" {
+		return "", errMissingJWTPrincipal
+	}
+	return strings.TrimSpace(claims.Username), nil
+}
+
 func (r *jwtPrincipalResolver) Email(c *fiber.Ctx) (string, error) {
 	claims, err := r.Claims(c)
 	if err != nil {

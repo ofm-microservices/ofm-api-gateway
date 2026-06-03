@@ -7,6 +7,7 @@ import (
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	"net/mail"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -39,6 +40,13 @@ type onboardingService struct {
 type reviewService struct {
 	client ReviewClient
 	log    Logger
+}
+
+type userProfileService struct {
+	gigs    GigService
+	reviews ReviewService
+	users   UserClient
+	log     Logger
 }
 
 type searchService struct {
@@ -142,6 +150,30 @@ func NewReview(client ReviewClient, log Logger) (ReviewService, error) {
 	return &reviewService{
 		client: client,
 		log:    log.With(logging.String("module", "review-application")),
+	}, nil
+}
+
+// NewUserProfile constructs the application service responsible for the
+// public user profile page.
+func NewUserProfile(gigs GigService, reviews ReviewService, users UserClient, log Logger) (UserProfileService, error) {
+	if gigs == nil {
+		return nil, ErrNilGigClient
+	}
+	if reviews == nil {
+		return nil, ErrNilReviewClient
+	}
+	if users == nil {
+		return nil, ErrNilUserClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &userProfileService{
+		gigs:    gigs,
+		reviews: reviews,
+		users:   users,
+		log:     log.With(logging.String("module", "user-profile-application")),
 	}, nil
 }
 
@@ -644,11 +676,12 @@ func (s *reviewService) CreateReview(ctx context.Context, req gateway.CreateRevi
 		return nil, gateway.ErrInvalidOrderBuyerID
 	}
 	res, err := s.client.CreateReview(ctx, gateway.CreateReviewRequest{
-		OrderID:     strings.TrimSpace(req.OrderID),
-		BuyerID:     strings.TrimSpace(req.BuyerID),
-		Content:     content,
-		Rating:      req.Rating,
-		RequestedAt: strings.TrimSpace(req.RequestedAt),
+		OrderID:       strings.TrimSpace(req.OrderID),
+		BuyerID:       strings.TrimSpace(req.BuyerID),
+		BuyerUsername: strings.TrimSpace(req.BuyerUsername),
+		Content:       content,
+		Rating:        req.Rating,
+		RequestedAt:   strings.TrimSpace(req.RequestedAt),
 	})
 	if err != nil {
 		return nil, err
@@ -656,8 +689,109 @@ func (s *reviewService) CreateReview(ctx context.Context, req gateway.CreateRevi
 	return res, nil
 }
 
+func (s *reviewService) GetReviewsBySellerUsername(ctx context.Context, req gateway.GetReviewsBySellerUsernameRequest) (*gateway.ListSellerReviewsResult, error) {
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		return nil, gateway.ErrInvalidUsername
+	}
+
+	result, err := s.client.GetReviewsBySellerUsername(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *reviewService) ListSellerReviews(ctx context.Context, req gateway.ListSellerReviewsRequest) (*gateway.ListSellerReviewsResult, error) {
+	return s.GetReviewsBySellerUsername(ctx, gateway.GetReviewsBySellerUsernameRequest{
+		Username: strings.TrimSpace(req.Username),
+		Cursor:   strings.TrimSpace(req.Cursor),
+	})
+}
+
 func (s *searchService) Search(ctx context.Context, req gateway.SearchRequest) (*gateway.SearchResponse, error) {
 	return s.client.Search(ctx, req)
+}
+
+func (s *userProfileService) GetUserProfile(ctx context.Context, req gateway.GetUserProfileRequest) (*gateway.UserProfile, error) {
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		return nil, gateway.ErrInvalidUsername
+	}
+
+	type result struct {
+		user    *gateway.User
+		gigs    *gateway.GigPreviewList
+		reviews *gateway.ListSellerReviewsResult
+		userErr error
+	}
+	var (
+		wg  sync.WaitGroup
+		mu  sync.Mutex
+		out = result{}
+	)
+
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		user, err := s.users.GetDetailedUserByUsername(ctx, username)
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			out.userErr = err
+			return
+		}
+		out.user = user
+	}()
+	go func() {
+		defer wg.Done()
+		gigs, err := s.gigs.GetPreviewGigsByFreelancerUsername(ctx, gateway.GetPreviewGigsByFreelancerUsernameRequest{
+			Username: username,
+			Cursor:   strings.TrimSpace(req.GigsCursor),
+		})
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			// gigs is optional; keep the page partially populated.
+			return
+		}
+		out.gigs = gigs
+	}()
+	go func() {
+		defer wg.Done()
+		reviews, err := s.reviews.GetReviewsBySellerUsername(ctx, gateway.GetReviewsBySellerUsernameRequest{
+			Username: username,
+			Cursor:   strings.TrimSpace(req.ReviewsCursor),
+		})
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			return
+		}
+		out.reviews = reviews
+	}()
+	wg.Wait()
+	if out.userErr != nil {
+		return nil, out.userErr
+	}
+	if out.user == nil || strings.TrimSpace(out.user.UserID) == "" {
+		return nil, gateway.ErrUserNotFound
+	}
+
+	page := &gateway.UserProfile{
+		User: out.user,
+		Gigs: out.gigs,
+	}
+	if page.Gigs == nil {
+		page.Gigs = &gateway.GigPreviewList{}
+	}
+	if out.reviews != nil {
+		page.Reviews = out.reviews.Reviews
+	}
+	if page.Reviews == nil {
+		page.Reviews = &gateway.ReviewList{}
+	}
+	return page, nil
 }
 
 func (s *authMeService) GetMe(ctx context.Context, userID string) (*gateway.User, error) {

@@ -8,57 +8,59 @@ const (
 
 // Gig represents the public draft and publish payload for the gig workflow.
 type Gig struct {
-	GigID                 string         `json:"gig_id,omitempty"`
+	GigID                 string         `json:"gig_id"`
 	FreelancerID          string         `json:"-"`
-	Freelancer            *User          `json:"freelancer,omitempty"`
-	Slug                  string         `json:"slug,omitempty"`
-	Title                 string         `json:"title,omitempty"`
-	Description           string         `json:"description,omitempty"`
-	CategoryID            int64          `json:"category_id,omitempty"`
-	Currency              string         `json:"currency,omitempty"`
-	Status                string         `json:"status,omitempty"`
-	BasicInfoCompleted    bool           `json:"basic_info_completed,omitempty"`
-	PackagesCompleted     bool           `json:"packages_completed,omitempty"`
-	RequirementsCompleted bool           `json:"requirements_completed,omitempty"`
-	MediaCompleted        bool           `json:"media_completed,omitempty"`
-	PictureFileID         string         `json:"picture_file_id,omitempty"`
-	PictureURL            string         `json:"picture_url,omitempty"`
-	PublishedAt           string         `json:"published_at,omitempty"`
-	CreatedAt             string         `json:"created_at,omitempty"`
-	UpdatedAt             string         `json:"updated_at,omitempty"`
-	Packages              []GigPackage   `json:"packages,omitempty"`
-	Questions             []GigQuestion  `json:"questions,omitempty"`
-	Media                 []GigMedia     `json:"media,omitempty"`
-	Reviews               *ReviewList    `json:"reviews,omitempty"`
+	Freelancer            *User          `json:"freelancer"`
+	SellerUsername        string         `json:"seller_username"`
+	Slug                  string         `json:"slug"`
+	Title                 string         `json:"title"`
+	Description           string         `json:"description"`
+	ShortInfo             string         `json:"short_info"`
+	CategoryID            int64          `json:"category_id"`
+	Currency              string         `json:"currency"`
+	Status                string         `json:"status"`
+	BasicInfoCompleted    bool           `json:"basic_info_completed"`
+	PackagesCompleted     bool           `json:"packages_completed"`
+	RequirementsCompleted bool           `json:"requirements_completed"`
+	MediaCompleted        bool           `json:"media_completed"`
+	PictureFileID         string         `json:"picture_file_id"`
+	PictureURL            string         `json:"picture_url"`
+	PublishedAt           string         `json:"published_at"`
+	CreatedAt             string         `json:"created_at"`
+	UpdatedAt             string         `json:"updated_at"`
+	Packages              []GigPackage   `json:"packages"`
+	Questions             []GigQuestion  `json:"questions"`
+	Media                 []GigMedia     `json:"media"`
+	Reviews               *ReviewList    `json:"reviews"`
 	ReviewsSummary        *ReviewSummary `json:"reviews_summary"`
 }
 
 // GigPackage is the public representation of one gig pricing tier.
 type GigPackage struct {
-	ID           string `json:"id,omitempty"`
-	GigID        string `json:"gig_id,omitempty"`
+	ID           string `json:"id"`
+	GigID        string `json:"gig_id"`
 	Tier         string `json:"tier"`
 	Description  string `json:"description"`
 	DeliveryDays int32  `json:"delivery_days"`
 	PriceCents   int64  `json:"price_cents"`
-	SortOrder    int32  `json:"sort_order,omitempty"`
+	SortOrder    int32  `json:"sort_order"`
 }
 
 // GigQuestion describes one buyer requirement question.
 type GigQuestion struct {
-	ID        string `json:"id,omitempty"`
-	GigID     string `json:"gig_id,omitempty"`
+	ID        string `json:"id"`
+	GigID     string `json:"gig_id"`
 	Content   string `json:"content"`
-	SortOrder int32  `json:"sort_order,omitempty"`
+	SortOrder int32  `json:"sort_order"`
 }
 
 // GigMedia describes one gig media file reference returned by gig-service.
 type GigMedia struct {
-	ID        string `json:"id,omitempty"`
-	GigID     string `json:"gig_id,omitempty"`
-	FileID    string `json:"file_id,omitempty"`
-	URL       string `json:"url,omitempty"`
-	SortOrder int32  `json:"sort_order,omitempty"`
+	ID        string `json:"id"`
+	GigID     string `json:"gig_id"`
+	FileID    string `json:"file_id"`
+	URL       string `json:"url"`
+	SortOrder int32  `json:"sort_order"`
 }
 
 // GigMediaUpload carries one uploaded media file through the gateway.
@@ -78,6 +80,7 @@ type UpdateGigBasicInfoRequest struct {
 	GigID        string `json:"gig_id"`
 	FreelancerID string `json:"freelancer_id"`
 	Title        string `json:"title"`
+	ShortInfo    string `json:"short_info"`
 	Description  string `json:"description"`
 	CategoryID   int64  `json:"category_id"`
 	Currency     string `json:"currency"`
@@ -117,8 +120,34 @@ type GetGigBySlugRequest struct {
 	Cursor   string `json:"cursor"`
 }
 
+// GetPreviewGigsByFreelancerUsernameRequest loads the public freelancer gig
+// preview list by username.
+type GetPreviewGigsByFreelancerUsernameRequest struct {
+	Username string `json:"username"`
+	Cursor   string `json:"cursor"`
+}
+
+// GigPreview represents one item in the freelancer preview list.
+type GigPreview struct {
+	GigID             string `json:"gig_id"`
+	Slug              string `json:"slug"`
+	Title             string `json:"title"`
+	ShortInfo         string `json:"short_info"`
+	MinimumPriceCents int64  `json:"minimum_price_cents"`
+	PictureURL        string `json:"picture_url"`
+	CreatedAt         string `json:"created_at"`
+}
+
+// GigPreviewList wraps one page of freelancer preview gigs.
+type GigPreviewList struct {
+	Items   []GigPreview `json:"items"`
+	Cursor  string       `json:"cursor"`
+	HasMore bool         `json:"has_more"`
+}
+
 // PublishGigRequest publishes a complete gig draft.
 type PublishGigRequest struct {
 	GigID        string `json:"gig_id"`
 	FreelancerID string `json:"freelancer_id"`
+	Username     string `json:"username"`
 }

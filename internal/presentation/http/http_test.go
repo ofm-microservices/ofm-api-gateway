@@ -136,7 +136,7 @@ var _ = Describe("AuthHandler", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(fiber.StatusAccepted))
 			body, _ := io.ReadAll(resp.Body)
-			Expect(string(body)).To(MatchJSON(`{"session_id":"session-1","status":"pending"}`))
+			Expect(string(body)).To(MatchJSON(`{"session_id":"session-1","client_id":"","user_id":"","status":"pending","conflict_state":"","username_taken":false,"email_taken":false}`))
 		})
 
 		It("maps invalid email to 400", func() {
@@ -272,7 +272,7 @@ var _ = Describe("AuthHandler", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(fiber.StatusOK))
 			body, _ := io.ReadAll(resp.Body)
-			Expect(string(body)).To(MatchJSON(`{"user_id":"user-1","username":"alex","display_name":"Alex Tester","avatar_url":"https://example.com/avatar.png"}`))
+			Expect(string(body)).To(MatchJSON(`{"user_id":"user-1","username":"alex","display_name":"Alex Tester","avatar_id":"","avatar_url":"https://example.com/avatar.png","about":"","reviews_summary":null}`))
 		})
 	})
 
