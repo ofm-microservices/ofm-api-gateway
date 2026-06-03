@@ -70,6 +70,7 @@ type GigClient interface {
 	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
 	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
+	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 	Close() error
 }
@@ -101,6 +102,7 @@ type OrderCheckoutClient interface {
 type ReviewClient interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
 	GetGigReviews(ctx context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error)
+	GetReviewsBySellerUsername(ctx context.Context, req gateway.GetReviewsBySellerUsernameRequest) (*gateway.GetReviewsBySellerUsernameResult, error)
 	GetGigReviewsSummary(ctx context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error)
 	GetUserRatingSummaryByUsername(ctx context.Context, req gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error)
 	Close() error
@@ -158,12 +160,14 @@ type GigMapper interface {
 	ToReplaceQuestionsResponse(res *gigv1.ReplaceQuestionsResponse) *gateway.Gig
 	ToReplaceMediaRequest(req gateway.ReplaceGigMediaRequest) *gigv1.ReplaceMediaRequest
 	ToReplaceMediaResponse(res *gigv1.ReplaceMediaResponse) *gateway.Gig
+	ToPublishRequest(req gateway.PublishGigRequest) *gigv1.PublishRequest
+	ToPublishResponse(res *gigv1.PublishResponse) *gateway.Gig
 	ToGetDraftRequest(req gateway.GetGigDraftRequest) *gigv1.GetDraftRequest
 	ToGetDraftResponse(res *gigv1.GetDraftResponse) *gateway.Gig
 	ToGetBySlugRequest(req gateway.GetGigBySlugRequest) *gigv1.GetGigBySlugRequest
 	ToGetBySlugResponse(res *gigv1.GetGigBySlugResponse) *gateway.Gig
-	ToPublishRequest(req gateway.PublishGigRequest) *gigv1.PublishRequest
-	ToPublishResponse(res *gigv1.PublishResponse) *gateway.Gig
+	ToGetPreviewGigsByFreelancerUsernameRequest(req gateway.GetPreviewGigsByFreelancerUsernameRequest) *gigv1.GetPreviewGigsByFreelancerUsernameRequest
+	ToGetPreviewGigsByFreelancerUsernameResponse(res *gigv1.GetPreviewGigsByFreelancerUsernameResponse) *gateway.GigPreviewList
 	ToError(err error) error
 }
 
@@ -208,6 +212,8 @@ type ReviewMapper interface {
 	ToCreateReviewResponse(res *reviewv1.CreateReviewResponse) *gateway.CreateReviewResult
 	ToGetGigReviewsRequest(req gateway.GetGigReviewsRequest) *reviewv1.ListGigReviewsRequest
 	ToGetGigReviewsResponse(res *reviewv1.ListGigReviewsResponse) *gateway.GetGigReviewsResult
+	ToGetReviewsBySellerUsernameRequest(req gateway.GetReviewsBySellerUsernameRequest) *reviewv1.GetReviewsBySellerUsernameRequest
+	ToGetReviewsBySellerUsernameResponse(res *reviewv1.ListSellerReviewsResponse) *gateway.GetReviewsBySellerUsernameResult
 	ToGetGigReviewsSummaryRequest(req gateway.GetGigReviewsSummaryRequest) *reviewv1.GetGigRatingSummaryRequest
 	ToGetGigReviewsSummaryResponse(res *reviewv1.RatingSummary) *gateway.ReviewSummary
 	ToGetUserRatingSummaryByUsernameRequest(req gateway.GetUserRatingSummaryByUsernameRequest) *reviewv1.GetUserRatingSummaryByUsernameRequest

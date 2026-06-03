@@ -34,6 +34,10 @@ type AuthHandler interface {
 // HTTP layer.
 type GigService = service.GigService
 
+// UserProfileService aliases the application boundary that assembles the
+// public user profile page.
+type UserProfileService = service.UserProfileService
+
 // OrderService aliases the application order orchestration contract used by
 // the HTTP layer.
 type OrderService = service.OrderService
@@ -50,6 +54,7 @@ type SearchService = service.SearchService
 type GigPrincipalResolver interface {
 	Middleware() fiber.Handler
 	FreelancerID(c *fiber.Ctx) (string, error)
+	Username(c *fiber.Ctx) (string, error)
 	Email(c *fiber.Ctx) (string, error)
 }
 
@@ -63,7 +68,14 @@ type GigHandler interface {
 	HandleReplaceMedia(c *fiber.Ctx) error
 	HandleGetDraft(c *fiber.Ctx) error
 	HandleGetBySlug(c *fiber.Ctx) error
+	HandleGetPreviewGigsByFreelancerUsername(c *fiber.Ctx) error
 	HandlePublish(c *fiber.Ctx) error
+}
+
+// UserHandler exposes the public user profile HTTP route group.
+type UserHandler interface {
+	RegisterRoutes(router fiber.Router)
+	HandleGetByUsername(c *fiber.Ctx) error
 }
 
 // OrderHandler exposes the create-order HTTP route owned by api-gateway.

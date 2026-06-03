@@ -60,6 +60,8 @@ type authSessionServiceStub struct{}
 
 type authMeServiceStub struct{}
 
+type userProfileServiceStub struct{}
+
 func (authSessionServiceStub) SignIn(context.Context, gateway.SignInRequest) (*gateway.AuthTokensResult, error) {
 	return &gateway.AuthTokensResult{TokenType: "Bearer"}, nil
 }
@@ -76,6 +78,14 @@ func (authSessionServiceStub) Close() error { return nil }
 
 func (authMeServiceStub) GetMe(context.Context, string) (*gateway.User, error) {
 	return &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester", AvatarURL: "https://example.com/avatar.png"}, nil
+}
+
+func (userProfileServiceStub) GetUserProfile(context.Context, gateway.GetUserProfileRequest) (*gateway.UserProfile, error) {
+	return &gateway.UserProfile{
+		User: &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester", AvatarURL: "https://example.com/avatar.png"},
+		Gigs: &gateway.GigPreviewList{},
+		Reviews: &gateway.ReviewList{},
+	}, nil
 }
 
 type registrationServiceStub struct{}
@@ -146,6 +156,9 @@ func (h *gigHandlerStub) RegisterRoutes(router fiber.Router) {
 	router.Post("/gigs/drafts", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusAccepted)
 	})
+	router.Get("/users/:username/gigs", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
 }
 
 func (h *gigHandlerStub) HandleCreateDraft(*fiber.Ctx) error      { return nil }
@@ -155,7 +168,23 @@ func (h *gigHandlerStub) HandleReplaceQuestions(*fiber.Ctx) error { return nil }
 func (h *gigHandlerStub) HandleReplaceMedia(*fiber.Ctx) error     { return nil }
 func (h *gigHandlerStub) HandleGetDraft(*fiber.Ctx) error         { return nil }
 func (h *gigHandlerStub) HandleGetBySlug(*fiber.Ctx) error        { return nil }
-func (h *gigHandlerStub) HandlePublish(*fiber.Ctx) error          { return nil }
+func (h *gigHandlerStub) HandleGetPreviewGigsByFreelancerUsername(*fiber.Ctx) error {
+	return nil
+}
+func (h *gigHandlerStub) HandlePublish(*fiber.Ctx) error { return nil }
+
+type userHandlerStub struct {
+	registered bool
+}
+
+func (h *userHandlerStub) RegisterRoutes(router fiber.Router) {
+	h.registered = true
+	router.Get("/users/:username", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+}
+
+func (h *userHandlerStub) HandleGetByUsername(*fiber.Ctx) error { return nil }
 
 type orderHandlerStub struct {
 	registered bool
@@ -254,6 +283,10 @@ func (gigPublisherStub) GetBySlug(context.Context, gateway.GetGigBySlugRequest) 
 	return &gateway.Gig{GigID: "gig-1"}, nil
 }
 
+func (gigPublisherStub) GetPreviewGigsByFreelancerUsername(context.Context, gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
+	return &gateway.GigPreviewList{}, nil
+}
+
 func (gigPublisherStub) Publish(context.Context, gateway.PublishGigRequest) (*gateway.Gig, error) {
 	return &gateway.Gig{GigID: "gig-1"}, nil
 }
@@ -266,6 +299,14 @@ func (reviewClientStub) CreateReview(context.Context, gateway.CreateReviewReques
 
 func (reviewClientStub) GetGigReviews(context.Context, gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error) {
 	return &gateway.GetGigReviewsResult{}, nil
+}
+
+func (reviewClientStub) ListSellerReviews(context.Context, gateway.ListSellerReviewsRequest) (*gateway.ListSellerReviewsResult, error) {
+	return &gateway.ListSellerReviewsResult{Reviews: &gateway.ReviewList{}}, nil
+}
+
+func (reviewClientStub) GetReviewsBySellerUsername(context.Context, gateway.GetReviewsBySellerUsernameRequest) (*gateway.ListSellerReviewsResult, error) {
+	return &gateway.ListSellerReviewsResult{Reviews: &gateway.ReviewList{}}, nil
 }
 
 func (reviewClientStub) GetGigReviewsSummary(context.Context, gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error) {
@@ -318,6 +359,10 @@ func (gigServiceStub) GetDraft(context.Context, gateway.GetGigDraftRequest) (*ga
 
 func (gigServiceStub) GetBySlug(context.Context, gateway.GetGigBySlugRequest) (*gateway.Gig, error) {
 	return &gateway.Gig{GigID: "gig-1"}, nil
+}
+
+func (gigServiceStub) GetPreviewGigsByFreelancerUsername(context.Context, gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
+	return &gateway.GigPreviewList{}, nil
 }
 
 func (gigServiceStub) Publish(context.Context, gateway.PublishGigRequest) (*gateway.Gig, error) {
@@ -465,17 +510,26 @@ var _ = Describe("FX providers", func() {
 		Expect(handler).NotTo(BeNil())
 	})
 
+	It("constructs the v1 user handler", func() {
+		handler, err := ProvideHTTPV1UserHandler(userProfileServiceStub{}, lg)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(handler).NotTo(BeNil())
+	})
+
 	It("registers versioned routes", func() {
 		srv := &httpServerStub{app: fiber.New()}
 		handler := &authHandlerStub{}
+		userHandler := &userHandlerStub{}
 		gigHandler := &gigHandlerStub{}
 		orderHandler := &orderHandlerStub{}
 		reviewHandler := &reviewHandlerStub{}
 		searchHandler := &searchHandlerStub{}
 		onboardingHandler := &onboardingHandlerStub{}
-		InvokeRegisterHTTPV1Routes(srv, handler, gigHandler, orderHandler, reviewHandler, searchHandler, onboardingHandler)
+		InvokeRegisterHTTPV1Routes(srv, handler, userHandler, gigHandler, orderHandler, reviewHandler, searchHandler, onboardingHandler)
 
 		Expect(handler.registered).To(BeTrue())
+		Expect(userHandler.registered).To(BeTrue())
 		Expect(gigHandler.registered).To(BeTrue())
 		Expect(orderHandler.registered).To(BeTrue())
 		Expect(reviewHandler.registered).To(BeTrue())

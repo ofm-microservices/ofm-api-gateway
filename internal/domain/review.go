@@ -2,11 +2,12 @@ package gateway
 
 // CreateReviewRequest submits a buyer-authenticated review for a completed order.
 type CreateReviewRequest struct {
-	OrderID     string `json:"order_id"`
-	Content     string `json:"content"`
-	Rating      int32  `json:"rating"`
-	BuyerID     string `json:"-"`
-	RequestedAt string `json:"requested_at,omitempty"`
+	OrderID       string `json:"order_id"`
+	Content       string `json:"content"`
+	Rating        int32  `json:"rating"`
+	BuyerID       string `json:"-"`
+	BuyerUsername string `json:"-"`
+	RequestedAt   string `json:"requested_at"`
 }
 
 // CreateReviewResult reports the created review.
@@ -23,12 +24,12 @@ type CreateReviewResult struct {
 // GetGigReviewsRequest loads public reviews for one gig.
 type GetGigReviewsRequest struct {
 	GigID  string `json:"gig_id"`
-	Cursor string `json:"cursor,omitempty"`
+	Cursor string `json:"cursor"`
 }
 
 // GetGigReviewsResult contains the public review list for one gig.
 type GetGigReviewsResult struct {
-	Reviews *ReviewList `json:"reviews,omitempty"`
+	Reviews *ReviewList `json:"reviews"`
 }
 
 // ReviewList wraps one page of public gig reviews.
@@ -43,6 +44,23 @@ type GetGigReviewsSummaryRequest struct {
 	GigID string `json:"gig_id"`
 }
 
+// GetReviewsBySellerUsernameRequest loads public reviews for one seller by username.
+type GetReviewsBySellerUsernameRequest struct {
+	Username string `json:"username"`
+	Cursor   string `json:"cursor"`
+}
+
+// GetReviewsBySellerUsernameResult contains the public review list for one seller.
+type GetReviewsBySellerUsernameResult struct {
+	Reviews *ReviewList `json:"reviews"`
+}
+
+// ListSellerReviewsRequest is a compatibility alias for the seller-username request.
+type ListSellerReviewsRequest = GetReviewsBySellerUsernameRequest
+
+// ListSellerReviewsResult is a compatibility alias for the seller-username result.
+type ListSellerReviewsResult = GetReviewsBySellerUsernameResult
+
 // GetUserRatingSummaryByUsernameRequest loads the user rating summary for one
 // public username handle.
 type GetUserRatingSummaryByUsernameRequest struct {
@@ -51,31 +69,32 @@ type GetUserRatingSummaryByUsernameRequest struct {
 
 // ReviewAuthor describes the user metadata attached to a public review.
 type ReviewAuthor struct {
-	UserID      string `json:"user_id,omitempty"`
-	Username    string `json:"username,omitempty"`
-	DisplayName string `json:"display_name,omitempty"`
+	UserID      string `json:"user_id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
 	AvatarURL   string `json:"avatar_url"`
 }
 
 // Review represents one public gig review returned by api-gateway.
 type Review struct {
-	ReviewID    string        `json:"review_id,omitempty"`
-	OrderID     string        `json:"order_id,omitempty"`
-	GigID       string        `json:"gig_id,omitempty"`
-	BuyerUserID string        `json:"buyer_user_id,omitempty"`
-	Content     string        `json:"content,omitempty"`
-	Rating      int32         `json:"rating,omitempty"`
-	CreatedAt   string        `json:"created_at,omitempty"`
-	Author      *ReviewAuthor `json:"author,omitempty"`
+	ReviewID       string        `json:"review_id"`
+	OrderID        string        `json:"order_id"`
+	GigID          string        `json:"gig_id"`
+	BuyerUserID    string        `json:"buyer_user_id"`
+	Content        string        `json:"content"`
+	Rating         int32         `json:"rating"`
+	CreatedAt      string        `json:"created_at"`
+	SellerUsername string        `json:"seller_username"`
+	Author         *ReviewAuthor `json:"author"`
 }
 
 // ReviewSummary aggregates public rating counts for a gig.
 type ReviewSummary struct {
-	RatingAvg    float64 `json:"rating_avg,omitempty"`
-	TotalReviews int64   `json:"total_reviews,omitempty"`
-	Stars5       int64   `json:"stars_5,omitempty"`
-	Stars4       int64   `json:"stars_4,omitempty"`
-	Stars3       int64   `json:"stars_3,omitempty"`
-	Stars2       int64   `json:"stars_2,omitempty"`
-	Stars1       int64   `json:"stars_1,omitempty"`
+	RatingAvg    float64 `json:"rating_avg"`
+	TotalReviews int64   `json:"total_reviews"`
+	Stars5       int64   `json:"stars_5"`
+	Stars4       int64   `json:"stars_4"`
+	Stars3       int64   `json:"stars_3"`
+	Stars2       int64   `json:"stars_2"`
+	Stars1       int64   `json:"stars_1"`
 }

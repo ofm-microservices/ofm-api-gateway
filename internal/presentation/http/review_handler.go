@@ -56,8 +56,13 @@ func (h *reviewHandler) HandleCreateReview(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
+	buyerUsername, err := h.auth.Username(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	req.OrderID = c.Params("order_id")
 	req.BuyerID = buyerID
+	req.BuyerUsername = buyerUsername
 	req.RequestedAt = strings.TrimSpace(firstNonEmpty(c.Get("X-Requested-At"), req.RequestedAt))
 
 	result, err := h.service.CreateReview(c.UserContext(), req)
@@ -70,6 +75,7 @@ func (h *reviewHandler) HandleCreateReview(c *fiber.Ctx) error {
 		logging.DurationMS(time.Since(started)),
 		logging.String("order_id", req.OrderID),
 		logging.String("buyer_id", buyerID),
+		logging.String("buyer_username", buyerUsername),
 	)
 
 	return c.Status(fiber.StatusCreated).JSON(result)

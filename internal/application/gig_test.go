@@ -18,6 +18,7 @@ type gigPublisherStub struct {
 	mediaReq     gateway.ReplaceGigMediaRequest
 	draftReq     gateway.GetGigDraftRequest
 	slugReq      gateway.GetGigBySlugRequest
+	previewReq   gateway.GetPreviewGigsByFreelancerUsernameRequest
 	publishReq   gateway.PublishGigRequest
 
 	createRes    *gateway.Gig
@@ -27,6 +28,7 @@ type gigPublisherStub struct {
 	mediaRes     *gateway.Gig
 	draftRes     *gateway.Gig
 	slugRes      *gateway.Gig
+	previewRes   *gateway.GigPreviewList
 	publishRes   *gateway.Gig
 
 	createErr    error
@@ -36,6 +38,7 @@ type gigPublisherStub struct {
 	mediaErr     error
 	draftErr     error
 	slugErr      error
+	previewErr   error
 	publishErr   error
 }
 
@@ -43,10 +46,13 @@ type reviewClientStub struct {
 	reviewsReq       gateway.GetGigReviewsRequest
 	summaryReq       gateway.GetGigReviewsSummaryRequest
 	sellerSummaryReq gateway.GetUserRatingSummaryByUsernameRequest
+	sellerReviewsReq gateway.ListSellerReviewsRequest
 	reviewsRes       *gateway.GetGigReviewsResult
 	summaryRes       *gateway.ReviewSummary
+	sellerReviewsRes *gateway.ListSellerReviewsResult
 	reviewsErr       error
 	summaryErr       error
+	sellerReviewsErr error
 }
 
 func (s *gigPublisherStub) CreateDraft(_ context.Context, req gateway.CreateGigDraftRequest) (*gateway.Gig, error) {
@@ -84,9 +90,25 @@ func (s *gigPublisherStub) GetBySlug(_ context.Context, req gateway.GetGigBySlug
 	return s.slugRes, s.slugErr
 }
 
+func (s *gigPublisherStub) GetPreviewGigsByFreelancerUsername(_ context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
+	s.previewReq = req
+	return s.previewRes, s.previewErr
+}
+
 func (s *gigPublisherStub) Publish(_ context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
 	s.publishReq = req
 	return s.publishRes, s.publishErr
+}
+
+type userProfileServiceStub struct {
+	req gateway.GetUserProfileRequest
+	res *gateway.UserProfile
+	err error
+}
+
+func (s *userProfileServiceStub) GetUserProfile(_ context.Context, req gateway.GetUserProfileRequest) (*gateway.UserProfile, error) {
+	s.req = req
+	return s.res, s.err
 }
 
 func (s *reviewClientStub) CreateReview(context.Context, gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error) {
@@ -96,6 +118,22 @@ func (s *reviewClientStub) CreateReview(context.Context, gateway.CreateReviewReq
 func (s *reviewClientStub) GetGigReviews(_ context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error) {
 	s.reviewsReq = req
 	return s.reviewsRes, s.reviewsErr
+}
+
+func (s *reviewClientStub) ListSellerReviews(_ context.Context, req gateway.ListSellerReviewsRequest) (*gateway.ListSellerReviewsResult, error) {
+	s.sellerReviewsReq = req
+	if s.sellerReviewsRes != nil {
+		return s.sellerReviewsRes, s.sellerReviewsErr
+	}
+	return &gateway.ListSellerReviewsResult{Reviews: &gateway.ReviewList{}}, s.sellerReviewsErr
+}
+
+func (s *reviewClientStub) GetReviewsBySellerUsername(_ context.Context, req gateway.GetReviewsBySellerUsernameRequest) (*gateway.ListSellerReviewsResult, error) {
+	s.sellerReviewsReq = gateway.ListSellerReviewsRequest{Username: req.Username, Cursor: req.Cursor}
+	if s.sellerReviewsRes != nil {
+		return s.sellerReviewsRes, s.sellerReviewsErr
+	}
+	return &gateway.ListSellerReviewsResult{Reviews: &gateway.ReviewList{}}, s.sellerReviewsErr
 }
 
 func (s *reviewClientStub) GetGigReviewsSummary(_ context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error) {
@@ -273,9 +311,46 @@ var _ = Describe("GigService", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pub.draftReq.FreelancerID).To(Equal("freelancer-1"))
 
-		_, err = svc.Publish(context.Background(), gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1"})
+		_, err = svc.Publish(context.Background(), gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1", Username: "alex"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pub.publishReq.GigID).To(Equal("gig-1"))
+		Expect(pub.publishReq.Username).To(Equal("alex"))
+	})
+
+	It("assembles the public user profile from user, gig, and review services", func() {
+		gigs := &gigPublisherStub{}
+		reviews := &reviewClientStub{}
+		users := &userClientStub{}
+		users.userRes = &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester"}
+		gigs.previewRes = &gateway.GigPreviewList{
+			Items:   []gateway.GigPreview{{GigID: "gig-1"}},
+			Cursor:  "gigs-cursor",
+			HasMore: true,
+		}
+		reviews.sellerReviewsRes = &gateway.ListSellerReviewsResult{
+			Reviews: &gateway.ReviewList{
+				Items:   []gateway.Review{{ReviewID: "review-1"}},
+				Cursor:  "reviews-cursor",
+				HasMore: false,
+			},
+		}
+
+		svc, err := NewUserProfile(gigs, reviews, users, lg)
+		Expect(err).NotTo(HaveOccurred())
+
+		res, err := svc.GetUserProfile(context.Background(), gateway.GetUserProfileRequest{
+			Username:      " alex ",
+			GigsCursor:    " g ",
+			ReviewsCursor: " r ",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res.User.Username).To(Equal("alex"))
+		Expect(gigs.previewReq.Username).To(Equal("alex"))
+		Expect(gigs.previewReq.Cursor).To(Equal("g"))
+		Expect(reviews.sellerReviewsReq.Username).To(Equal("alex"))
+		Expect(reviews.sellerReviewsReq.Cursor).To(Equal("r"))
+		Expect(res.Gigs.Items).To(HaveLen(1))
+		Expect(res.Reviews.Items).To(HaveLen(1))
 	})
 
 	It("returns delegate failures unchanged", func() {
@@ -444,9 +519,9 @@ var _ = Describe("GigService", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pub.draftReq).To(Equal(gateway.GetGigDraftRequest{GigID: "gig-1", FreelancerID: "freelancer-1"}))
 
-		_, err = svc.Publish(context.Background(), gateway.PublishGigRequest{GigID: " gig-1 ", FreelancerID: " freelancer-1 "})
+		_, err = svc.Publish(context.Background(), gateway.PublishGigRequest{GigID: " gig-1 ", FreelancerID: " freelancer-1 ", Username: " alex "})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(pub.publishReq).To(Equal(gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1"}))
+		Expect(pub.publishReq).To(Equal(gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1", Username: "alex"}))
 	})
 
 	It("loads public gig pages with reviews summary and freelancer", func() {

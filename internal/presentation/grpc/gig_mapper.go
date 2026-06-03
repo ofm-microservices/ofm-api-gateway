@@ -29,6 +29,7 @@ func (m *gigMapper) ToUpdateBasicInfoRequest(req gateway.UpdateGigBasicInfoReque
 		GigId:        req.GigID,
 		FreelancerId: req.FreelancerID,
 		Title:        req.Title,
+		ShortInfo:    req.ShortInfo,
 		Description:  req.Description,
 		CategoryId:   req.CategoryID,
 		Currency:     req.Currency,
@@ -107,6 +108,18 @@ func (m *gigMapper) ToReplaceMediaResponse(res *gigv1.ReplaceMediaResponse) *gat
 	return m.toGig(res.GetGig())
 }
 
+func (m *gigMapper) ToPublishRequest(req gateway.PublishGigRequest) *gigv1.PublishRequest {
+	return &gigv1.PublishRequest{
+		GigId:        req.GigID,
+		FreelancerId: req.FreelancerID,
+		Username:     req.Username,
+	}
+}
+
+func (m *gigMapper) ToPublishResponse(res *gigv1.PublishResponse) *gateway.Gig {
+	return m.toGig(res.GetGig())
+}
+
 func (m *gigMapper) ToGetDraftRequest(req gateway.GetGigDraftRequest) *gigv1.GetDraftRequest {
 	return &gigv1.GetDraftRequest{GigId: req.GigID, FreelancerId: req.FreelancerID}
 }
@@ -123,12 +136,39 @@ func (m *gigMapper) ToGetBySlugResponse(res *gigv1.GetGigBySlugResponse) *gatewa
 	return m.toGig(res.GetGig())
 }
 
-func (m *gigMapper) ToPublishRequest(req gateway.PublishGigRequest) *gigv1.PublishRequest {
-	return &gigv1.PublishRequest{GigId: req.GigID, FreelancerId: req.FreelancerID}
+func (m *gigMapper) ToGetPreviewGigsByFreelancerUsernameRequest(req gateway.GetPreviewGigsByFreelancerUsernameRequest) *gigv1.GetPreviewGigsByFreelancerUsernameRequest {
+	return &gigv1.GetPreviewGigsByFreelancerUsernameRequest{
+		Username: req.Username,
+		Cursor:   req.Cursor,
+	}
 }
 
-func (m *gigMapper) ToPublishResponse(res *gigv1.PublishResponse) *gateway.Gig {
-	return m.toGig(res.GetGig())
+func (m *gigMapper) ToGetPreviewGigsByFreelancerUsernameResponse(res *gigv1.GetPreviewGigsByFreelancerUsernameResponse) *gateway.GigPreviewList {
+	if res == nil {
+		return nil
+	}
+
+	items := make([]gateway.GigPreview, 0, len(res.GetGigs()))
+	for _, item := range res.GetGigs() {
+		if item == nil {
+			continue
+		}
+		items = append(items, gateway.GigPreview{
+			GigID:             item.GetGigId(),
+			Slug:              item.GetSlug(),
+			Title:             item.GetTitle(),
+			ShortInfo:         item.GetShortInfo(),
+			MinimumPriceCents: item.GetMinimumPriceCents(),
+			PictureURL:        item.GetPictureUrl(),
+			CreatedAt:         item.GetCreatedAt(),
+		})
+	}
+
+	return &gateway.GigPreviewList{
+		Items:   items,
+		Cursor:  res.GetCursor(),
+		HasMore: res.GetHasMore(),
+	}
 }
 
 func (m *gigMapper) ToError(err error) error {
@@ -205,6 +245,8 @@ func (m *gigMapper) toGig(res *gigv1.Gig) *gateway.Gig {
 		MediaCompleted:        res.GetMediaCompleted(),
 		PictureFileID:         res.GetPictureFileId(),
 		PictureURL:            res.GetPictureUrl(),
+		SellerUsername:        res.GetSellerUsername(),
+		ShortInfo:             res.GetShortInfo(),
 		PublishedAt:           res.GetPublishedAt(),
 		CreatedAt:             res.GetCreatedAt(),
 		UpdatedAt:             res.GetUpdatedAt(),

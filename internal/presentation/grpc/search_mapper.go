@@ -26,9 +26,9 @@ func (m *searchMapper) ToSearchResponse(res *searchv1.SearchResponse) *gateway.S
 		Cursor:  res.GetCursor(),
 		HasMore: res.GetHasMore(),
 	}
-	out.Services = make([]gateway.SearchResult, 0, len(res.GetServices()))
+	out.Items = make([]gateway.SearchResult, 0, len(res.GetServices()))
 	for _, item := range res.GetServices() {
-		out.Services = append(out.Services, gateway.SearchResult{
+		out.Items = append(out.Items, gateway.SearchResult{
 			ID:           item.GetId(),
 			Title:        item.GetTitle(),
 			Description:  item.GetDescription(),

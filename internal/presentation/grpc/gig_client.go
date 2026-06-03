@@ -110,6 +110,15 @@ func (c *gigClient) GetBySlug(ctx context.Context, req gateway.GetGigBySlugReque
 	return c.mapr.ToGetBySlugResponse(res), nil
 }
 
+func (c *gigClient) GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
+	res, err := c.cl.GetPreviewGigsByFreelancerUsername(ctx, c.mapr.ToGetPreviewGigsByFreelancerUsernameRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+
+	return c.mapr.ToGetPreviewGigsByFreelancerUsernameResponse(res), nil
+}
+
 func (c *gigClient) Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
 	res, err := c.cl.Publish(ctx, c.mapr.ToPublishRequest(req))
 	if err != nil {
