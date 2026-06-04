@@ -102,6 +102,7 @@ type OrderCheckoutClient interface {
 // OrderPreviewClient is the gateway-facing gRPC adapter for user-scoped order previews.
 type OrderPreviewClient interface {
 	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
+	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
 	Close() error
 }
 
@@ -223,6 +224,8 @@ type OrderCheckoutMapper interface {
 type OrderPreviewMapper interface {
 	ToGetOrderPreviewByIDRequest(req gateway.GetOrderPreviewByIDRequest) *orderwritev1.GetOrderPreviewByIDRequest
 	ToGetOrderPreviewByIDResponse(res *orderwritev1.GetOrderPreviewByIDResponse) *gateway.GetOrderPreviewByIDResult
+	ToGetOrderRequirementsByIDRequest(req gateway.GetOrderRequirementsByIDRequest) *orderwritev1.GetOrderRequirementsByIDRequest
+	ToGetOrderRequirementsByIDResponse(res *orderwritev1.GetOrderRequirementsByIDResponse) *gateway.GetOrderRequirementsByIDResult
 	ToError(err error) error
 }
 

@@ -133,6 +133,13 @@ type GetOrderPreviewByIDRequest struct {
 	Role    ParticipantRole
 }
 
+// GetOrderRequirementsByIDRequest loads the order requirements page for a
+// user-scoped order.
+type GetOrderRequirementsByIDRequest struct {
+	OrderID string
+	UserID  string
+}
+
 // OrderPreview is the minimal order payload returned by the preview endpoint.
 type OrderPreview struct {
 	OrderID   string `json:"order_id"`
@@ -161,6 +168,33 @@ type OrderPreviewUser struct {
 	AvatarURL   string `json:"avatar_url"`
 }
 
+// OrderRequirementsQuestion describes one requirements question snapshot.
+type OrderRequirementsQuestion struct {
+	QuestionID string `json:"question_id"`
+	Text       string `json:"text"`
+	Type       string `json:"type"`
+	Required   bool   `json:"required"`
+	SortOrder  int32  `json:"sort_order"`
+}
+
+// OrderRequirementsAnswer describes one optional buyer answer snapshot.
+type OrderRequirementsAnswer struct {
+	Value string `json:"value"`
+}
+
+// OrderRequirementsQuestionAnswer describes a question and its optional answer.
+type OrderRequirementsQuestionAnswer struct {
+	Question *OrderRequirementsQuestion `json:"question"`
+	Answer   *OrderRequirementsAnswer   `json:"answer"`
+}
+
+// OrderRequirementsCustomerMessage describes the buyer message snapshot.
+type OrderRequirementsCustomerMessage struct {
+	Message   string `json:"message"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 // OrderPreviewPayment describes the payment snapshot returned alongside the order preview.
 type OrderPreviewPayment struct {
 	PaymentID   string `json:"payment_id"`
@@ -177,6 +211,13 @@ type GetOrderPreviewByIDResult struct {
 	Payment    *OrderPreviewPayment `json:"payment"`
 	Customer   *OrderPreviewUser    `json:"customer"`
 	Freelancer *OrderPreviewUser    `json:"freelancer"`
+}
+
+// GetOrderRequirementsByIDResult wraps the order requirements payload in the
+// public HTTP response.
+type GetOrderRequirementsByIDResult struct {
+	QuestionsAnswers []OrderRequirementsQuestionAnswer `json:"questions_answers"`
+	CustomerMessage  *OrderRequirementsCustomerMessage  `json:"customer_message"`
 }
 
 // OrderSnapshot captures the immutable commercial order data shown to the
