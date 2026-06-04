@@ -213,6 +213,8 @@ func (m *orderCheckoutMapper) ToError(err error) error {
 			return gateway.ErrSelfOrderNotAllowed
 		case gateway.ErrOrderNotConfirmable.Error():
 			return gateway.ErrOrderNotConfirmable
+		case gateway.ErrOrderRequirementsIncomplete.Error():
+			return gateway.ErrOrderRequirementsIncomplete
 		case gateway.ErrOrderAlreadyPaymentPending.Error():
 			return gateway.ErrOrderAlreadyPaymentPending
 		case gateway.ErrOrderAlreadyFunded.Error():

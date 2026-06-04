@@ -43,6 +43,8 @@ func (h *orderHandler) RegisterRoutes(router fiber.Router) {
 	orders.Use(h.auth.Middleware())
 	orders.Post("/start", h.HandleCreateOrder)
 	orders.Post("/:order_id/confirm", h.HandleConfirmOrder)
+	orders.Post("/:order_id/requirements", h.HandleSubmitRequirements)
+	orders.Post("/:order_id/message", h.HandleSubmitMessage)
 	orders.Post("/:order_id/deliver", h.HandleDeliverOrder)
 	orders.Post("/:order_id/accept", h.HandleAcceptDelivery)
 	orders.Post("/:order_id/request-revision", h.HandleRequestRevision)
@@ -110,6 +112,68 @@ func (h *orderHandler) HandleConfirmOrder(c *fiber.Ctx) error {
 		logging.DurationMS(time.Since(started)),
 		logging.String("order_id", req.OrderID),
 		logging.String("connection_id", req.RealtimeConnectionID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleSubmitRequirements validates and forwards the buyer requirements answers request.
+func (h *orderHandler) HandleSubmitRequirements(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	var req gateway.SubmitOrderRequirementsRequest
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	buyerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.BuyerID = buyerID
+
+	result, err := h.service.SubmitRequirements(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order requirements request accepted",
+		logging.Operation("http.order.submit_requirements"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("buyer_id", buyerID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleSubmitMessage validates and forwards the buyer initial message request.
+func (h *orderHandler) HandleSubmitMessage(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	var req gateway.SubmitOrderMessageRequest
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	buyerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.BuyerID = buyerID
+
+	result, err := h.service.SubmitMessage(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order message request accepted",
+		logging.Operation("http.order.submit_message"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("buyer_id", buyerID),
 	)
 
 	return c.Status(fiber.StatusOK).JSON(result)
@@ -256,6 +320,7 @@ func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
 	case errors.Is(err, gateway.ErrGigNotFound):
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderNotConfirmable),
+		errors.Is(err, gateway.ErrOrderRequirementsIncomplete),
 		errors.Is(err, gateway.ErrOrderAlreadyPaymentPending),
 		errors.Is(err, gateway.ErrOrderAlreadyFunded),
 		errors.Is(err, gateway.ErrOrderNotDeliverable),
@@ -268,6 +333,7 @@ func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
 	case errors.Is(err, gateway.ErrOrderNotOwned):
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrInvalidOrderDeliveryMessage),
+		errors.Is(err, gateway.ErrInvalidOrderMessage),
 		errors.Is(err, gateway.ErrInvalidOrderReason),
 		errors.Is(err, gateway.ErrInvalidOrderID),
 		errors.Is(err, gateway.ErrInvalidOrderSellerID):
