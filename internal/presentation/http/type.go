@@ -86,6 +86,7 @@ type UserOrderHandler interface {
 	RegisterRoutes(router fiber.Router)
 	HandleGetOrderPreviewByID(c *fiber.Ctx) error
 	HandleGetOrderRequirementsByID(c *fiber.Ctx) error
+	HandleGetOrderDeliveryByID(c *fiber.Ctx) error
 }
 
 // OrderHandler exposes the create-order HTTP route owned by api-gateway.
