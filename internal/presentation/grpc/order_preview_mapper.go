@@ -104,6 +104,37 @@ func (m *orderPreviewMapper) ToGetOrderRequirementsByIDResponse(res *orderwritev
 	return out
 }
 
+func (m *orderPreviewMapper) ToGetOrderDeliveryByIDRequest(req gateway.GetOrderDeliveryByIDRequest) *orderwritev1.GetOrderDeliveryByIDRequest {
+	return &orderwritev1.GetOrderDeliveryByIDRequest{
+		OrderId: strings.TrimSpace(req.OrderID),
+		UserId:  strings.TrimSpace(req.UserID),
+	}
+}
+
+func (m *orderPreviewMapper) ToGetOrderDeliveryByIDResponse(res *orderwritev1.GetOrderDeliveryByIDResponse) *gateway.GetOrderDeliveryByIDResult {
+	if res == nil {
+		return &gateway.GetOrderDeliveryByIDResult{}
+	}
+	out := &gateway.GetOrderDeliveryByIDResult{
+		OrderDeliveryFiles: make([]gateway.OrderDeliveryFile, 0, len(res.GetOrderDeliveryFiles())),
+	}
+	if delivery := res.GetOrderDelivery(); delivery != nil {
+		out.OrderDelivery = &gateway.OrderDelivery{
+			DeliveryMessage: delivery.GetDeliveryMessage(),
+			CreatedAt:       delivery.GetCreatedAt(),
+		}
+	}
+	for _, file := range res.GetOrderDeliveryFiles() {
+		out.OrderDeliveryFiles = append(out.OrderDeliveryFiles, gateway.OrderDeliveryFile{
+			FileID:    file.GetFileId(),
+			FileURL:   file.GetFileUrl(),
+			SortOrder: file.GetSortOrder(),
+			CreatedAt: file.GetCreatedAt(),
+		})
+	}
+	return out
+}
+
 func (m *orderPreviewMapper) ToError(err error) error {
 	if err == nil {
 		return nil

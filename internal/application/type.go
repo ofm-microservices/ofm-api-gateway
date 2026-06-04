@@ -117,6 +117,7 @@ type OrderCheckoutClient interface {
 type OrderPreviewClient interface {
 	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
 	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
+	GetOrderDeliveryByID(ctx context.Context, req gateway.GetOrderDeliveryByIDRequest) (*gateway.GetOrderDeliveryByIDResult, error)
 	Close() error
 }
 
@@ -162,6 +163,7 @@ type OrderService interface {
 type OrderPreviewService interface {
 	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
 	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
+	GetOrderDeliveryByID(ctx context.Context, req gateway.GetOrderDeliveryByIDRequest) (*gateway.GetOrderDeliveryByIDResult, error)
 }
 
 // ReviewService validates public review requests and delegates to review-service.

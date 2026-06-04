@@ -103,6 +103,7 @@ type OrderCheckoutClient interface {
 type OrderPreviewClient interface {
 	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
 	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
+	GetOrderDeliveryByID(ctx context.Context, req gateway.GetOrderDeliveryByIDRequest) (*gateway.GetOrderDeliveryByIDResult, error)
 	Close() error
 }
 
@@ -226,6 +227,8 @@ type OrderPreviewMapper interface {
 	ToGetOrderPreviewByIDResponse(res *orderwritev1.GetOrderPreviewByIDResponse) *gateway.GetOrderPreviewByIDResult
 	ToGetOrderRequirementsByIDRequest(req gateway.GetOrderRequirementsByIDRequest) *orderwritev1.GetOrderRequirementsByIDRequest
 	ToGetOrderRequirementsByIDResponse(res *orderwritev1.GetOrderRequirementsByIDResponse) *gateway.GetOrderRequirementsByIDResult
+	ToGetOrderDeliveryByIDRequest(req gateway.GetOrderDeliveryByIDRequest) *orderwritev1.GetOrderDeliveryByIDRequest
+	ToGetOrderDeliveryByIDResponse(res *orderwritev1.GetOrderDeliveryByIDResponse) *gateway.GetOrderDeliveryByIDResult
 	ToError(err error) error
 }
 

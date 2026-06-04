@@ -52,6 +52,7 @@ var (
 	ErrSelfOrderNotAllowed          = errors.New("self order not allowed")
 	ErrOrderNotOwned                = errors.New("order not owned")
 	ErrOrderRequirementsNotFound    = errors.New("order requirements not found")
+	ErrOrderDeliveryNotFound        = errors.New("order delivery not found")
 	ErrOrderNotConfirmable          = errors.New("order not confirmable")
 	ErrOrderRequirementsIncomplete  = errors.New("order requirements not completed")
 	ErrOrderAlreadyPaymentPending   = errors.New("order already payment pending")

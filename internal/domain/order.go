@@ -140,6 +140,13 @@ type GetOrderRequirementsByIDRequest struct {
 	UserID  string
 }
 
+// GetOrderDeliveryByIDRequest loads the order delivery page for a
+// user-scoped order.
+type GetOrderDeliveryByIDRequest struct {
+	OrderID string
+	UserID  string
+}
+
 // OrderPreview is the minimal order payload returned by the preview endpoint.
 type OrderPreview struct {
 	OrderID   string `json:"order_id"`
@@ -195,6 +202,20 @@ type OrderRequirementsCustomerMessage struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
+// OrderDelivery describes the seller delivery payload returned by the delivery endpoint.
+type OrderDelivery struct {
+	DeliveryMessage string `json:"delivery_message"`
+	CreatedAt       string `json:"created_at"`
+}
+
+// OrderDeliveryFile describes one delivery attachment returned by the delivery endpoint.
+type OrderDeliveryFile struct {
+	FileID    string `json:"file_id"`
+	FileURL   string `json:"file_url"`
+	SortOrder int32  `json:"sort_order"`
+	CreatedAt string `json:"created_at"`
+}
+
 // OrderPreviewPayment describes the payment snapshot returned alongside the order preview.
 type OrderPreviewPayment struct {
 	PaymentID   string `json:"payment_id"`
@@ -217,7 +238,13 @@ type GetOrderPreviewByIDResult struct {
 // public HTTP response.
 type GetOrderRequirementsByIDResult struct {
 	QuestionsAnswers []OrderRequirementsQuestionAnswer `json:"questions_answers"`
-	CustomerMessage  *OrderRequirementsCustomerMessage  `json:"customer_message"`
+	CustomerMessage  *OrderRequirementsCustomerMessage `json:"customer_message"`
+}
+
+// GetOrderDeliveryByIDResult wraps the seller delivery payload in the public HTTP response.
+type GetOrderDeliveryByIDResult struct {
+	OrderDelivery      *OrderDelivery      `json:"order_delivery"`
+	OrderDeliveryFiles []OrderDeliveryFile `json:"order_delivery_files"`
 }
 
 // OrderSnapshot captures the immutable commercial order data shown to the

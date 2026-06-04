@@ -569,6 +569,34 @@ func (s *orderPreviewService) GetOrderRequirementsByID(ctx context.Context, req 
 	return result, nil
 }
 
+func (s *orderPreviewService) GetOrderDeliveryByID(ctx context.Context, req gateway.GetOrderDeliveryByIDRequest) (*gateway.GetOrderDeliveryByIDResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	result, err := s.client.GetOrderDeliveryByID(ctx, gateway.GetOrderDeliveryByIDRequest{
+		OrderID: orderID,
+		UserID:  userID,
+	})
+	if err != nil {
+		log.Warn("order delivery lookup failed",
+			logging.Operation("order_preview.delivery_by_order"),
+			logging.String("order_id", orderID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	if result == nil {
+		result = &gateway.GetOrderDeliveryByIDResult{}
+	}
+	return result, nil
+}
+
 func (s *orderService) ConfirmOrder(ctx context.Context, req gateway.ConfirmOrderRequest) (*gateway.ConfirmOrderResult, error) {
 	log := logging.WithContext(ctx, s.log)
 	orderID := strings.TrimSpace(req.OrderID)

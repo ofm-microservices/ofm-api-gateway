@@ -43,6 +43,7 @@ func (h *userOrderHandler) RegisterRoutes(router fiber.Router) {
 	users.Use(h.auth.Middleware())
 	users.Get("", h.HandleGetOrderPreviewByID)
 	users.Get("/requirements", h.HandleGetOrderRequirementsByID)
+	users.Get("/delivery", h.HandleGetOrderDeliveryByID)
 }
 
 func (h *userOrderHandler) HandleGetOrderPreviewByID(c *fiber.Ctx) error {
@@ -133,6 +134,47 @@ func (h *userOrderHandler) HandleGetOrderRequirementsByID(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
+func (h *userOrderHandler) HandleGetOrderDeliveryByID(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	username, err := url.PathUnescape(c.Params("username"))
+	if err != nil {
+		return h.mapError(c, gateway.ErrInvalidUsername)
+	}
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return h.mapError(c, gateway.ErrInvalidUsername)
+	}
+	actorUsername, err := h.auth.Username(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	if strings.TrimSpace(actorUsername) != username {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden"})
+	}
+	userID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req := gateway.GetOrderDeliveryByIDRequest{
+		OrderID: c.Params("order_id"),
+		UserID:  userID,
+	}
+	result, err := h.service.GetOrderDeliveryByID(c.UserContext(), req)
+	if err != nil {
+		return h.mapError(c, err)
+	}
+
+	log.Info("user order delivery request accepted",
+		logging.Operation("http.user.order.delivery"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("username", username),
+		logging.String("order_id", req.OrderID),
+	)
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
 func (h *userOrderHandler) mapError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, gateway.ErrInvalidUsername),
@@ -141,6 +183,8 @@ func (h *userOrderHandler) mapError(c *fiber.Ctx, err error) error {
 		errors.Is(err, gateway.ErrInvalidUserID):
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderRequirementsNotFound):
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrOrderDeliveryNotFound):
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderNotOwned):
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
