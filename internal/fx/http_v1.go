@@ -13,6 +13,7 @@ import (
 var HTTPV1Module = fx.Options(
 	fx.Provide(ProvideHTTPV1AuthHandler),
 	fx.Provide(ProvideHTTPV1UserHandler),
+	fx.Provide(ProvideHTTPV1UserOrderHandler),
 	fx.Provide(ProvideHTTPV1GigHandler),
 	fx.Provide(ProvideHTTPV1OrderHandler),
 	fx.Provide(ProvideHTTPV1ReviewHandler),
@@ -47,6 +48,15 @@ func ProvideHTTPV1UserHandler(
 	lg logging.Logger,
 ) (httpserver.UserHandler, error) {
 	return httpserver.NewUserHandler(service, lg)
+}
+
+// ProvideHTTPV1UserOrderHandler constructs the authenticated user order preview HTTP handler.
+func ProvideHTTPV1UserOrderHandler(
+	cfg *config.Config,
+	service httpserver.OrderPreviewService,
+	lg logging.Logger,
+) (httpserver.UserOrderHandler, error) {
+	return httpserver.NewUserOrderHandler(service, cfg.JWT.AccessSecret, lg)
 }
 
 // ProvideHTTPV1OrderHandler constructs the versioned order HTTP handler.
@@ -85,12 +95,13 @@ func ProvideHTTPV1OnboardingHandler(
 }
 
 // InvokeRegisterHTTPV1Routes registers versioned HTTP routes on the server.
-func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, userHandler httpserver.UserHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, reviewHandler httpserver.ReviewHandler, searchHandler httpserver.SearchHandler, onboardingHandler httpserver.OnboardingHandler) {
+func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, userHandler httpserver.UserHandler, userOrderHandler httpserver.UserOrderHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, reviewHandler httpserver.ReviewHandler, searchHandler httpserver.SearchHandler, onboardingHandler httpserver.OnboardingHandler) {
 	srv.App().Get("/v1/search", searchHandler.HandleSearch)
 
 	v1 := srv.App().Group("/v1")
 	authHandler.RegisterRoutes(v1)
 	userHandler.RegisterRoutes(v1)
+	userOrderHandler.RegisterRoutes(v1)
 	gigHandler.RegisterRoutes(v1)
 	orderHandler.RegisterRoutes(v1)
 	reviewHandler.RegisterRoutes(v1)

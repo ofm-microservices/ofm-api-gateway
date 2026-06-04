@@ -38,6 +38,7 @@ var (
 	ErrInvalidOrderID               = errors.New("invalid order id")
 	ErrInvalidOrderBuyerID          = errors.New("invalid order buyer id")
 	ErrInvalidOrderSellerID         = errors.New("invalid order seller id")
+	ErrInvalidParticipantRole       = errors.New("invalid participant role")
 	ErrInvalidOrderTitle            = errors.New("invalid order title")
 	ErrInvalidOrderDeliveryMessage  = errors.New("invalid order delivery message")
 	ErrInvalidOrderReason           = errors.New("invalid order reason")

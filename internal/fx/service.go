@@ -15,6 +15,7 @@ var ServiceModule = fx.Options(
 	fx.Provide(ProvideGigService),
 	fx.Provide(ProvideUserProfileService),
 	fx.Provide(ProvideOrderService),
+	fx.Provide(ProvideOrderPreviewService),
 	fx.Provide(ProvidePaymentOnboardingService),
 	fx.Provide(ProvideReviewService),
 	fx.Provide(ProvideSearchService),
@@ -72,6 +73,15 @@ func ProvideOrderService(
 	lg logging.Logger,
 ) (service.OrderService, error) {
 	return service.NewOrder(client, lg)
+}
+
+// ProvideOrderPreviewService constructs the user-scoped order preview service.
+func ProvideOrderPreviewService(
+	client service.OrderPreviewClient,
+	payments service.PaymentByOrderClient,
+	lg logging.Logger,
+) (service.OrderPreviewService, error) {
+	return service.NewOrderPreview(client, payments, lg)
 }
 
 // ProvidePaymentOnboardingService constructs the onboarding application service.

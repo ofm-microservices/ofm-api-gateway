@@ -8,6 +8,7 @@ var (
 	ErrNilAuthMeService            = errors.New("auth me service is nil")
 	ErrNilGigService               = errors.New("gig service is nil")
 	ErrNilOrderService             = errors.New("order service is nil")
+	ErrNilOrderPreviewService      = errors.New("order preview service is nil")
 	ErrNilReviewService            = errors.New("review service is nil")
 	ErrNilUserProfileService       = errors.New("user profile service is nil")
 	ErrNilSearchService            = errors.New("search service is nil")

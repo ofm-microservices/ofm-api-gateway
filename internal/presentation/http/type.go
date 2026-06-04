@@ -42,6 +42,9 @@ type UserProfileService = service.UserProfileService
 // the HTTP layer.
 type OrderService = service.OrderService
 
+// OrderPreviewService aliases the application boundary for user-scoped order previews.
+type OrderPreviewService = service.OrderPreviewService
+
 // ReviewService aliases the application review orchestration contract used by
 // the HTTP layer.
 type ReviewService = service.ReviewService
@@ -76,6 +79,12 @@ type GigHandler interface {
 type UserHandler interface {
 	RegisterRoutes(router fiber.Router)
 	HandleGetByUsername(c *fiber.Ctx) error
+}
+
+// UserOrderHandler exposes the authenticated user-scoped order preview route group.
+type UserOrderHandler interface {
+	RegisterRoutes(router fiber.Router)
+	HandleGetOrderPreviewByID(c *fiber.Ctx) error
 }
 
 // OrderHandler exposes the create-order HTTP route owned by api-gateway.

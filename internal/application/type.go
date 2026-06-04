@@ -113,6 +113,18 @@ type OrderCheckoutClient interface {
 	Close() error
 }
 
+// OrderPreviewClient is the outbound gRPC boundary for user-scoped order previews.
+type OrderPreviewClient interface {
+	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
+	Close() error
+}
+
+// PaymentByOrderClient is the outbound gRPC boundary for payment snapshots by order.
+type PaymentByOrderClient interface {
+	GetPaymentByOrderId(ctx context.Context, orderID string) (*gateway.OrderPreviewPayment, error)
+	Close() error
+}
+
 // ReviewClient is the outbound gRPC boundary for review-service.
 type ReviewClient interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
@@ -142,6 +154,12 @@ type OrderService interface {
 	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
 	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
 	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
+}
+
+// OrderPreviewService validates the public user-scoped order preview request
+// and delegates it to order-service.
+type OrderPreviewService interface {
+	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
 }
 
 // ReviewService validates public review requests and delegates to review-service.

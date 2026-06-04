@@ -15,6 +15,7 @@ type Config struct {
 	NATS             NATSConfig
 	RegistrationSaga RegistrationSagaConfig
 	OrderSaga        OrderSagaConfig
+	OrderService     OrderServiceConfig
 	ReviewService    ReviewServiceConfig
 	UserService      UserServiceConfig
 	SearchService    SearchServiceConfig

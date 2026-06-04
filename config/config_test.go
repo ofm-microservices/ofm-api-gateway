@@ -34,6 +34,7 @@ var _ = Describe("Load", func() {
 			"REGISTRATION_SAGA_ADDRESS",
 			"GIG_SERVICE_ADDRESS",
 			"PAYMENT_SERVICE_ADDRESS",
+			"ORDER_SERVICE_ADDRESS",
 		} {
 			Expect(os.Unsetenv(key)).To(Succeed())
 		}
@@ -54,6 +55,7 @@ var _ = Describe("Load", func() {
 		Expect(cfg.JWT.AccessSecret).To(Equal("local-dev-access-secret-change-me"))
 		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:9500"))
 		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:9503"))
+		Expect(cfg.OrderService.Address).To(BeEmpty())
 	})
 
 	It("loads explicit environment overrides", func() {
@@ -65,6 +67,7 @@ var _ = Describe("Load", func() {
 		Expect(os.Setenv("REGISTRATION_SAGA_ADDRESS", "127.0.0.1:19500")).To(Succeed())
 		Expect(os.Setenv("GIG_SERVICE_ADDRESS", "127.0.0.1:19503")).To(Succeed())
 		Expect(os.Setenv("PAYMENT_SERVICE_ADDRESS", "127.0.0.1:19506")).To(Succeed())
+		Expect(os.Setenv("ORDER_SERVICE_ADDRESS", "127.0.0.1:19505")).To(Succeed())
 
 		cfg, err := Load()
 
@@ -77,6 +80,7 @@ var _ = Describe("Load", func() {
 		Expect(cfg.RegistrationSaga.Address).To(Equal("127.0.0.1:19500"))
 		Expect(cfg.GigService.Address).To(Equal("127.0.0.1:19503"))
 		Expect(cfg.PaymentService.Address).To(Equal("127.0.0.1:19506"))
+		Expect(cfg.OrderService.Address).To(Equal("127.0.0.1:19505"))
 	})
 
 	It("wraps env parsing failures", func() {

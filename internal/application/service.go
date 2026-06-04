@@ -32,6 +32,12 @@ type orderService struct {
 	log    Logger
 }
 
+type orderPreviewService struct {
+	client   OrderPreviewClient
+	payments PaymentByOrderClient
+	log      Logger
+}
+
 type onboardingService struct {
 	client PaymentOnboardingPublisher
 	log    Logger
@@ -119,6 +125,25 @@ func NewOrder(client OrderCheckoutClient, log Logger) (OrderService, error) {
 	return &orderService{
 		client: client,
 		log:    log.With(logging.String("module", "order-application")),
+	}, nil
+}
+
+// NewOrderPreview constructs the application service responsible for user-scoped order previews.
+func NewOrderPreview(client OrderPreviewClient, payments PaymentByOrderClient, log Logger) (OrderPreviewService, error) {
+	if client == nil {
+		return nil, ErrNilOrderClient
+	}
+	if payments == nil {
+		return nil, ErrNilPaymentByOrderClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+
+	return &orderPreviewService{
+		client:   client,
+		payments: payments,
+		log:      log.With(logging.String("module", "order-preview-application")),
 	}, nil
 }
 
@@ -457,6 +482,63 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 		result.Status = "requirements_pending"
 	}
 	return result, nil
+}
+
+func (s *orderPreviewService) GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	if req.Role != gateway.ParticipantRoleCustomer && req.Role != gateway.ParticipantRoleFreelancer {
+		return nil, gateway.ErrInvalidParticipantRole
+	}
+	var (
+		orderRes   *gateway.GetOrderPreviewByIDResult
+		paymentRes *gateway.OrderPreviewPayment
+		orderErr   error
+		paymentErr error
+	)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		orderRes, orderErr = s.client.GetOrderPreviewByID(ctx, gateway.GetOrderPreviewByIDRequest{
+			OrderID: orderID,
+			UserID:  userID,
+			Role:    req.Role,
+		})
+	}()
+	go func() {
+		defer wg.Done()
+		paymentRes, paymentErr = s.payments.GetPaymentByOrderId(ctx, orderID)
+	}()
+	wg.Wait()
+	if orderErr != nil {
+		return nil, orderErr
+	}
+	if orderRes == nil {
+		orderRes = &gateway.GetOrderPreviewByIDResult{}
+	}
+	if paymentErr != nil {
+		log.Warn("payment snapshot lookup failed",
+			logging.Operation("order_preview.payment_by_order"),
+			logging.String("order_id", orderID),
+			logging.Err(paymentErr),
+		)
+	}
+	orderRes.Payment = paymentRes
+	switch req.Role {
+	case gateway.ParticipantRoleCustomer:
+		orderRes.Customer = nil
+	case gateway.ParticipantRoleFreelancer:
+		orderRes.Freelancer = nil
+	}
+	return orderRes, nil
 }
 
 func (s *orderService) ConfirmOrder(ctx context.Context, req gateway.ConfirmOrderRequest) (*gateway.ConfirmOrderResult, error) {
