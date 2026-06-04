@@ -82,8 +82,8 @@ func (authMeServiceStub) GetMe(context.Context, string) (*gateway.User, error) {
 
 func (userProfileServiceStub) GetUserProfile(context.Context, gateway.GetUserProfileRequest) (*gateway.UserProfile, error) {
 	return &gateway.UserProfile{
-		User: &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester", AvatarURL: "https://example.com/avatar.png"},
-		Gigs: &gateway.GigPreviewList{},
+		User:    &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester", AvatarURL: "https://example.com/avatar.png"},
+		Gigs:    &gateway.GigPreviewList{},
 		Reviews: &gateway.ReviewList{},
 	}, nil
 }
@@ -185,6 +185,19 @@ func (h *userHandlerStub) RegisterRoutes(router fiber.Router) {
 }
 
 func (h *userHandlerStub) HandleGetByUsername(*fiber.Ctx) error { return nil }
+
+type userOrderHandlerStub struct {
+	registered bool
+}
+
+func (h *userOrderHandlerStub) RegisterRoutes(router fiber.Router) {
+	h.registered = true
+	router.Get("/users/:username/orders/:order_id", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+}
+
+func (h *userOrderHandlerStub) HandleGetOrderPreviewByID(*fiber.Ctx) error { return nil }
 
 type orderHandlerStub struct {
 	registered bool
@@ -521,15 +534,17 @@ var _ = Describe("FX providers", func() {
 		srv := &httpServerStub{app: fiber.New()}
 		handler := &authHandlerStub{}
 		userHandler := &userHandlerStub{}
+		userOrderHandler := &userOrderHandlerStub{}
 		gigHandler := &gigHandlerStub{}
 		orderHandler := &orderHandlerStub{}
 		reviewHandler := &reviewHandlerStub{}
 		searchHandler := &searchHandlerStub{}
 		onboardingHandler := &onboardingHandlerStub{}
-		InvokeRegisterHTTPV1Routes(srv, handler, userHandler, gigHandler, orderHandler, reviewHandler, searchHandler, onboardingHandler)
+		InvokeRegisterHTTPV1Routes(srv, handler, userHandler, userOrderHandler, gigHandler, orderHandler, reviewHandler, searchHandler, onboardingHandler)
 
 		Expect(handler.registered).To(BeTrue())
 		Expect(userHandler.registered).To(BeTrue())
+		Expect(userOrderHandler.registered).To(BeTrue())
 		Expect(gigHandler.registered).To(BeTrue())
 		Expect(orderHandler.registered).To(BeTrue())
 		Expect(reviewHandler.registered).To(BeTrue())

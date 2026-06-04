@@ -8,6 +8,7 @@ import (
 	authv1 "github.com/ofm-microservices/ofm-common/proto/auth/v1"
 	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
 	ordercheckoutv1 "github.com/ofm-microservices/ofm-common/proto/ordercheckout/v1"
+	orderwritev1 "github.com/ofm-microservices/ofm-common/proto/orderwrite/v1"
 	paymentconnectv1 "github.com/ofm-microservices/ofm-common/proto/paymentconnect/v1"
 	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 	reviewv1 "github.com/ofm-microservices/ofm-common/proto/review/v1"
@@ -95,6 +96,18 @@ type OrderCheckoutClient interface {
 	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
 	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
 	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
+	Close() error
+}
+
+// OrderPreviewClient is the gateway-facing gRPC adapter for user-scoped order previews.
+type OrderPreviewClient interface {
+	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
+	Close() error
+}
+
+// PaymentByOrderClient is the gateway-facing gRPC adapter for order-keyed payment snapshots.
+type PaymentByOrderClient interface {
+	GetPaymentByOrderId(ctx context.Context, orderID string) (*gateway.OrderPreviewPayment, error)
 	Close() error
 }
 
@@ -205,6 +218,14 @@ type OrderCheckoutMapper interface {
 	ToError(err error) error
 }
 
+// OrderPreviewMapper translates between gateway order preview types and the
+// shared order write gRPC contract.
+type OrderPreviewMapper interface {
+	ToGetOrderPreviewByIDRequest(req gateway.GetOrderPreviewByIDRequest) *orderwritev1.GetOrderPreviewByIDRequest
+	ToGetOrderPreviewByIDResponse(res *orderwritev1.GetOrderPreviewByIDResponse) *gateway.GetOrderPreviewByIDResult
+	ToError(err error) error
+}
+
 // ReviewMapper translates between gateway review types and the shared review
 // gRPC contract.
 type ReviewMapper interface {
@@ -255,6 +276,9 @@ type PaymentServiceConfig = config.PaymentServiceConfig
 
 // OrderSagaConfig aliases the outbound order-saga gRPC client configuration.
 type OrderSagaConfig = config.OrderSagaConfig
+
+// OrderServiceConfig aliases the outbound order-service gRPC client configuration.
+type OrderServiceConfig = config.OrderServiceConfig
 
 // ReviewServiceConfig aliases the outbound review-service gRPC client configuration.
 type ReviewServiceConfig = config.ReviewServiceConfig

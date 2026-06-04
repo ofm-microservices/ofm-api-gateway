@@ -1,5 +1,10 @@
 package gateway
 
+import (
+	"errors"
+	"strings"
+)
+
 // CreateOrderRequest starts the public order creation flow.
 type CreateOrderRequest struct {
 	BuyerID              string `json:"buyer_id"`
@@ -98,6 +103,80 @@ type OpenDisputeResult struct {
 	OrderID     string `json:"order_id"`
 	Status      string `json:"status"`
 	CurrentStep string `json:"current_step"`
+}
+
+// ParticipantRole is the shared customer/freelancer view role used by user-scoped resources.
+type ParticipantRole string
+
+const (
+	ParticipantRoleUnspecified ParticipantRole = ""
+	ParticipantRoleCustomer    ParticipantRole = "customer"
+	ParticipantRoleFreelancer  ParticipantRole = "freelancer"
+)
+
+// ParseParticipantRole validates a shared view role from query parameters.
+func ParseParticipantRole(raw string) (ParticipantRole, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case string(ParticipantRoleCustomer):
+		return ParticipantRoleCustomer, nil
+	case string(ParticipantRoleFreelancer):
+		return ParticipantRoleFreelancer, nil
+	default:
+		return ParticipantRoleUnspecified, errors.New("invalid participant role")
+	}
+}
+
+// GetOrderPreviewByIDRequest loads a user-scoped minimal order preview.
+type GetOrderPreviewByIDRequest struct {
+	OrderID string
+	UserID  string
+	Role    ParticipantRole
+}
+
+// OrderPreview is the minimal order payload returned by the preview endpoint.
+type OrderPreview struct {
+	OrderID   string `json:"order_id"`
+	CreatedAt string `json:"created_at"`
+	Status    string `json:"status"`
+}
+
+// OrderPreviewGig describes the gig snapshot returned alongside the order preview.
+type OrderPreviewGig struct {
+	GigID               string `json:"gig_id"`
+	Title               string `json:"title"`
+	PictureURL          string `json:"picture_url"`
+	PackageID           string `json:"package_id"`
+	PackageTitle        string `json:"package_title"`
+	PriceCents          int64  `json:"price_cents"`
+	Currency            string `json:"currency"`
+	Description         string `json:"description"`
+	PackageDeliveryDays int32  `json:"package_delivery_days"`
+}
+
+// OrderPreviewUser describes one participant snapshot in the order preview.
+type OrderPreviewUser struct {
+	UserID      string `json:"user_id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+	AvatarURL   string `json:"avatar_url"`
+}
+
+// OrderPreviewPayment describes the payment snapshot returned alongside the order preview.
+type OrderPreviewPayment struct {
+	PaymentID   string `json:"payment_id"`
+	AmountCents int64  `json:"amount_cents"`
+	Currency    string `json:"currency"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+// GetOrderPreviewByIDResult wraps the preview payload in the public HTTP response.
+type GetOrderPreviewByIDResult struct {
+	Order      *OrderPreview        `json:"order"`
+	Gig        *OrderPreviewGig     `json:"gig"`
+	Payment    *OrderPreviewPayment `json:"payment"`
+	Customer   *OrderPreviewUser    `json:"customer"`
+	Freelancer *OrderPreviewUser    `json:"freelancer"`
 }
 
 // OrderSnapshot captures the immutable commercial order data shown to the

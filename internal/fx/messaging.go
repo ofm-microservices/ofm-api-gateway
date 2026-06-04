@@ -17,6 +17,8 @@ var MessagingModule = fx.Options(
 	fx.Provide(ProvideAuthSessionClient),
 	fx.Provide(ProvideGigPublisher),
 	fx.Provide(ProvideOrderPublisher),
+	fx.Provide(ProvideOrderPreviewClient),
+	fx.Provide(ProvidePaymentByOrderClient),
 	fx.Provide(ProvidePaymentOnboardingPublisher),
 	fx.Provide(ProvideUserClient),
 	fx.Provide(ProvideReviewClient),
@@ -124,6 +126,50 @@ func ProvideOrderPublisher(
 	client, err := grpcclient.NewOrderCheckoutClient(cfg.OrderSaga, lg)
 	if err != nil {
 		lg.Error("connect order saga grpc failed", logging.Err(err))
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
+
+	return client, nil
+}
+
+// ProvideOrderPreviewClient constructs the order-service client used for user-scoped order previews.
+func ProvideOrderPreviewClient(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.OrderPreviewClient, error) {
+	client, err := grpcclient.NewOrderPreviewClient(cfg.OrderService, lg)
+	if err != nil {
+		lg.Error("connect order service grpc failed", logging.Err(err))
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
+
+	return client, nil
+}
+
+// ProvidePaymentByOrderClient constructs the payment-service client used for order-scoped payment snapshots.
+func ProvidePaymentByOrderClient(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.PaymentByOrderClient, error) {
+	client, err := grpcclient.NewPaymentByOrderClient(cfg.PaymentService, lg)
+	if err != nil {
+		lg.Error("connect payment service grpc failed", logging.Err(err))
 		return nil, err
 	}
 
