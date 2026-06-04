@@ -74,6 +74,36 @@ func (m *orderPreviewMapper) ToGetOrderPreviewByIDResponse(res *orderwritev1.Get
 	return out
 }
 
+func (m *orderPreviewMapper) ToGetOrderRequirementsByIDRequest(req gateway.GetOrderRequirementsByIDRequest) *orderwritev1.GetOrderRequirementsByIDRequest {
+	return &orderwritev1.GetOrderRequirementsByIDRequest{
+		OrderId: strings.TrimSpace(req.OrderID),
+		UserId:  strings.TrimSpace(req.UserID),
+	}
+}
+
+func (m *orderPreviewMapper) ToGetOrderRequirementsByIDResponse(res *orderwritev1.GetOrderRequirementsByIDResponse) *gateway.GetOrderRequirementsByIDResult {
+	if res == nil {
+		return &gateway.GetOrderRequirementsByIDResult{}
+	}
+	out := &gateway.GetOrderRequirementsByIDResult{
+		QuestionsAnswers: make([]gateway.OrderRequirementsQuestionAnswer, 0, len(res.GetQuestionsAnswers())),
+	}
+	for _, qa := range res.GetQuestionsAnswers() {
+		out.QuestionsAnswers = append(out.QuestionsAnswers, gateway.OrderRequirementsQuestionAnswer{
+			Question: toRequirementsQuestion(qa.GetQuestion()),
+			Answer:   toRequirementsAnswer(qa.GetAnswer()),
+		})
+	}
+	if msg := res.GetCustomerMessage(); msg != nil {
+		out.CustomerMessage = &gateway.OrderRequirementsCustomerMessage{
+			Message:   msg.GetMessage(),
+			CreatedAt: msg.GetCreatedAt(),
+			UpdatedAt: msg.GetUpdatedAt(),
+		}
+	}
+	return out
+}
+
 func (m *orderPreviewMapper) ToError(err error) error {
 	if err == nil {
 		return nil
@@ -93,4 +123,24 @@ func (m *orderPreviewMapper) ToError(err error) error {
 	default:
 		return err
 	}
+}
+
+func toRequirementsQuestion(q *orderwritev1.OrderRequirementQuestion) *gateway.OrderRequirementsQuestion {
+	if q == nil {
+		return nil
+	}
+	return &gateway.OrderRequirementsQuestion{
+		QuestionID: q.GetQuestionId(),
+		Text:       q.GetText(),
+		Type:       q.GetType(),
+		Required:   q.GetRequired(),
+		SortOrder:  q.GetSortOrder(),
+	}
+}
+
+func toRequirementsAnswer(a *orderwritev1.OrderRequirementAnswer) *gateway.OrderRequirementsAnswer {
+	if a == nil {
+		return nil
+	}
+	return &gateway.OrderRequirementsAnswer{Value: a.GetValue()}
 }

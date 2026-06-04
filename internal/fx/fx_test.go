@@ -197,7 +197,8 @@ func (h *userOrderHandlerStub) RegisterRoutes(router fiber.Router) {
 	})
 }
 
-func (h *userOrderHandlerStub) HandleGetOrderPreviewByID(*fiber.Ctx) error { return nil }
+func (h *userOrderHandlerStub) HandleGetOrderPreviewByID(*fiber.Ctx) error      { return nil }
+func (h *userOrderHandlerStub) HandleGetOrderRequirementsByID(*fiber.Ctx) error { return nil }
 
 type orderHandlerStub struct {
 	registered bool

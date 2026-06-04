@@ -11,7 +11,9 @@ import (
 	orderwritev1 "github.com/ofm-microservices/ofm-common/proto/orderwrite/v1"
 	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	grpcpkg "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 type orderPreviewClient struct {
@@ -52,6 +54,22 @@ func (c *orderPreviewClient) GetOrderPreviewByID(ctx context.Context, req gatewa
 		return nil, c.mapr.ToError(err)
 	}
 	return c.mapr.ToGetOrderPreviewByIDResponse(res), nil
+}
+
+func (c *orderPreviewClient) GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error) {
+	res, err := c.cl.GetOrderRequirementsByID(ctx, c.mapr.ToGetOrderRequirementsByIDRequest(req))
+	if err != nil {
+		if st, ok := status.FromError(err); ok {
+			switch st.Code() {
+			case codes.NotFound:
+				return nil, gateway.ErrOrderRequirementsNotFound
+			case codes.PermissionDenied:
+				return nil, gateway.ErrOrderNotOwned
+			}
+		}
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToGetOrderRequirementsByIDResponse(res), nil
 }
 
 func (c *orderPreviewClient) Close() error {

@@ -116,6 +116,7 @@ type OrderCheckoutClient interface {
 // OrderPreviewClient is the outbound gRPC boundary for user-scoped order previews.
 type OrderPreviewClient interface {
 	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
+	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
 	Close() error
 }
 
@@ -160,6 +161,7 @@ type OrderService interface {
 // and delegates it to order-service.
 type OrderPreviewService interface {
 	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
+	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
 }
 
 // ReviewService validates public review requests and delegates to review-service.
