@@ -7,6 +7,8 @@ import (
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	"io"
 	"mime/multipart"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -41,9 +43,11 @@ func NewGigHandler(service GigService, jwtSecret string, log logging.Logger) (Gi
 
 // RegisterRoutes mounts gig routes under the router it receives.
 func (h *gigHandler) RegisterRoutes(router fiber.Router) {
-	gigs := router.Group("/users/:username/gigs")
-	gigs.Get("", h.HandleGetPreviewGigsByFreelancerUsername)
-	gigs.Get("/*", h.HandleGetBySlug)
+	ownerGigs := router.Group("/users/:username/gigs")
+	ownerGigs.Get("", h.auth.Middleware(), h.HandleGetMyGigs)
+
+	publicGigs := router.Group("/users/:username/gigs")
+	publicGigs.Get("/*", h.HandleGetBySlug)
 
 	authGigs := router.Group("/gigs")
 	authGigs.Use(h.auth.Middleware())
@@ -204,16 +208,57 @@ func (h *gigHandler) HandleGetBySlug(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
-// HandleGetPreviewGigsByFreelancerUsername loads the freelancer preview page by username.
-func (h *gigHandler) HandleGetPreviewGigsByFreelancerUsername(c *fiber.Ctx) error {
-	result, err := h.service.GetPreviewGigsByFreelancerUsername(c.UserContext(), gateway.GetPreviewGigsByFreelancerUsernameRequest{
-		Username: c.Params("username"),
-		Cursor:   c.Query("cursor"),
-	})
+// HandleGetMyGigs loads the authenticated owner's gig list.
+func (h *gigHandler) HandleGetMyGigs(c *fiber.Ctx) error {
+	username, err := url.PathUnescape(c.Params("username"))
+	if err != nil {
+		return h.mapGigError(c, gateway.ErrInvalidUsername)
+	}
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return h.mapGigError(c, gateway.ErrInvalidUsername)
+	}
+	actorUsername, err := h.auth.Username(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	if strings.TrimSpace(actorUsername) != username {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden"})
+	}
+	freelancerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	page, err := parsePositiveIntQuery(c.Query("page"), 1, gateway.ErrInvalidGigListPage)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	limit, err := parsePositiveIntQuery(c.Query("limit"), 10, gateway.ErrInvalidGigListLimit)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	req := gateway.GetMyGigsRequest{
+		UserID: freelancerID,
+		Status: strings.TrimSpace(c.Query("status")),
+		Sort:   strings.TrimSpace(c.Query("sort")),
+		Order:  strings.TrimSpace(c.Query("order")),
+		Page:   int32(page),
+		Limit:  int32(limit),
+	}
+
+	result, err := h.service.GetMyGigs(c.UserContext(), req)
 	if err != nil {
 		return h.mapGigError(c, err)
 	}
 
+	h.log.Info("gig list request accepted",
+		logging.Operation("http.gig.list"),
+		logging.String("username", username),
+		logging.String("user_id", freelancerID),
+		logging.String("status", req.Status),
+		logging.String("sort", req.Sort),
+		logging.String("order", req.Order),
+	)
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
@@ -259,6 +304,13 @@ func (h *gigHandler) mapGigError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrGigNotFound):
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrInvalidGigListStatus),
+		errors.Is(err, gateway.ErrInvalidGigListSort),
+		errors.Is(err, gateway.ErrInvalidGigListOrder),
+		errors.Is(err, gateway.ErrInvalidGigListPage),
+		errors.Is(err, gateway.ErrInvalidGigListLimit),
+		errors.Is(err, gateway.ErrInvalidUserID):
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrGigDraftIncomplete),
 		errors.Is(err, gateway.ErrGigAlreadyPublished),
 		errors.Is(err, gateway.ErrConnectOnboardingIncomplete),
@@ -274,6 +326,18 @@ func (h *gigHandler) mapGigError(c *fiber.Ctx, err error) error {
 		h.log.Error("request failed", logging.Err(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
 	}
+}
+
+func parsePositiveIntQuery(raw string, def int, invalidErr error) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return def, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return 0, invalidErr
+	}
+	return value, nil
 }
 
 func hasValidGigIDSuffix(path string) bool {

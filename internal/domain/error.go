@@ -29,6 +29,11 @@ var (
 	ErrInvalidMediaRef              = ErrInvalidMediaUpload
 	ErrInvalidPackageCount          = errors.New("invalid package count")
 	ErrInvalidGigState              = errors.New("invalid gig state")
+	ErrInvalidGigListStatus         = errors.New("invalid gig list status")
+	ErrInvalidGigListSort           = errors.New("invalid gig list sort")
+	ErrInvalidGigListOrder          = errors.New("invalid gig list order")
+	ErrInvalidGigListPage           = errors.New("invalid gig list page")
+	ErrInvalidGigListLimit          = errors.New("invalid gig list limit")
 	ErrInvalidOrderConnectionID     = errors.New("invalid order connection id")
 	ErrInvalidOrderBuyerEmail       = errors.New("invalid order buyer email")
 	ErrInvalidOrderCurrency         = errors.New("invalid order currency")

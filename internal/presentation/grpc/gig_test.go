@@ -23,6 +23,7 @@ type fakeGigCommandServiceClient struct {
 	draftReq     *gigv1.GetDraftRequest
 	slugReq      *gigv1.GetGigBySlugRequest
 	previewReq   *gigv1.GetPreviewGigsByFreelancerUsernameRequest
+	myGigsReq    *gigv1.GetMyGigsRequest
 	publishReq   *gigv1.PublishRequest
 
 	createRes    *gigv1.CreateDraftResponse
@@ -33,6 +34,7 @@ type fakeGigCommandServiceClient struct {
 	draftRes     *gigv1.GetDraftResponse
 	slugRes      *gigv1.GetGigBySlugResponse
 	previewRes   *gigv1.GetPreviewGigsByFreelancerUsernameResponse
+	myGigsRes    *gigv1.GetMyGigsResponse
 	publishRes   *gigv1.PublishResponse
 
 	err error
@@ -76,6 +78,11 @@ func (f *fakeGigCommandServiceClient) GetGigBySlug(_ context.Context, req *gigv1
 func (f *fakeGigCommandServiceClient) GetPreviewGigsByFreelancerUsername(_ context.Context, req *gigv1.GetPreviewGigsByFreelancerUsernameRequest, _ ...grpc.CallOption) (*gigv1.GetPreviewGigsByFreelancerUsernameResponse, error) {
 	f.previewReq = req
 	return f.previewRes, f.err
+}
+
+func (f *fakeGigCommandServiceClient) GetMyGigs(_ context.Context, req *gigv1.GetMyGigsRequest, _ ...grpc.CallOption) (*gigv1.GetMyGigsResponse, error) {
+	f.myGigsReq = req
+	return f.myGigsRes, f.err
 }
 
 func (f *fakeGigCommandServiceClient) Publish(_ context.Context, req *gigv1.PublishRequest, _ ...grpc.CallOption) (*gigv1.PublishResponse, error) {
@@ -216,6 +223,7 @@ var _ = Describe("GigClient", func() {
 		fake.draftRes = &gigv1.GetDraftResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
 		fake.slugRes = &gigv1.GetGigBySlugResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
 		fake.previewRes = &gigv1.GetPreviewGigsByFreelancerUsernameResponse{Gigs: []*gigv1.GigPreview{{GigId: "gig-1"}}}
+		fake.myGigsRes = &gigv1.GetMyGigsResponse{Gigs: []*gigv1.GigPreview{{GigId: "gig-1"}}, Page: 1, Limit: 10}
 		fake.publishRes = &gigv1.PublishResponse{Gig: &gigv1.Gig{GigId: "gig-1"}}
 
 		res, err := client.CreateDraft(context.Background(), gateway.CreateGigDraftRequest{FreelancerID: "freelancer-1"})
@@ -253,10 +261,17 @@ var _ = Describe("GigClient", func() {
 		Expect(fake.slugReq.GetSlug()).To(Equal("my-gig-gig-1"))
 		Expect(res.GigID).To(Equal("gig-1"))
 
-		preview, err := client.GetPreviewGigsByFreelancerUsername(context.Background(), gateway.GetPreviewGigsByFreelancerUsernameRequest{Username: "alex", Cursor: "cursor"})
+		preview, err := client.GetPreviewGigsByFreelancerUsername(context.Background(), gateway.GetPreviewGigsByFreelancerUsernameRequest{Username: "alex", Page: 2, Limit: 10})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fake.previewReq.GetUsername()).To(Equal("alex"))
+		Expect(fake.previewReq.GetPage()).To(Equal(int32(2)))
+		Expect(fake.previewReq.GetLimit()).To(Equal(int32(10)))
 		Expect(preview.Items).To(HaveLen(1))
+
+		myGigs, err := client.GetMyGigs(context.Background(), gateway.GetMyGigsRequest{UserID: "user-1", Page: 1, Limit: 10})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fake.myGigsReq.GetUserId()).To(Equal("user-1"))
+		Expect(myGigs.Items).To(HaveLen(1))
 
 		res, err = client.Publish(context.Background(), gateway.PublishGigRequest{GigID: "gig-1", FreelancerID: "freelancer-1", Username: "alex"})
 		Expect(err).NotTo(HaveOccurred())

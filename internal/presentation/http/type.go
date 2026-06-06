@@ -71,7 +71,7 @@ type GigHandler interface {
 	HandleReplaceMedia(c *fiber.Ctx) error
 	HandleGetDraft(c *fiber.Ctx) error
 	HandleGetBySlug(c *fiber.Ctx) error
-	HandleGetPreviewGigsByFreelancerUsername(c *fiber.Ctx) error
+	HandleGetMyGigs(c *fiber.Ctx) error
 	HandlePublish(c *fiber.Ctx) error
 }
 

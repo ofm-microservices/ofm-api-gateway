@@ -72,6 +72,7 @@ type GigClient interface {
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
 	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
 	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
+	GetMyGigs(ctx context.Context, req gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 	Close() error
 }
@@ -183,6 +184,8 @@ type GigMapper interface {
 	ToGetBySlugResponse(res *gigv1.GetGigBySlugResponse) *gateway.Gig
 	ToGetPreviewGigsByFreelancerUsernameRequest(req gateway.GetPreviewGigsByFreelancerUsernameRequest) *gigv1.GetPreviewGigsByFreelancerUsernameRequest
 	ToGetPreviewGigsByFreelancerUsernameResponse(res *gigv1.GetPreviewGigsByFreelancerUsernameResponse) *gateway.GigPreviewList
+	ToGetMyGigsRequest(req gateway.GetMyGigsRequest) *gigv1.GetMyGigsRequest
+	ToGetMyGigsResponse(res *gigv1.GetMyGigsResponse) *gateway.GigPreviewPage
 	ToError(err error) error
 }
 

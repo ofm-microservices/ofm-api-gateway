@@ -267,7 +267,23 @@ func (s *gigService) GetPreviewGigsByFreelancerUsername(ctx context.Context, req
 	}
 	return s.client.GetPreviewGigsByFreelancerUsername(ctx, gateway.GetPreviewGigsByFreelancerUsernameRequest{
 		Username: username,
-		Cursor:   strings.TrimSpace(req.Cursor),
+		Page:     req.Page,
+		Limit:    req.Limit,
+	})
+}
+
+func (s *gigService) GetMyGigs(ctx context.Context, req gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error) {
+	userID := strings.TrimSpace(req.UserID)
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	return s.client.GetMyGigs(ctx, gateway.GetMyGigsRequest{
+		UserID: userID,
+		Status: strings.TrimSpace(req.Status),
+		Sort:   strings.TrimSpace(req.Sort),
+		Order:  strings.TrimSpace(req.Order),
+		Page:   req.Page,
+		Limit:  req.Limit,
 	})
 }
 

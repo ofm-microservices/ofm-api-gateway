@@ -58,9 +58,10 @@ var _ = Describe("UserHandler", func() {
 		service.res = &gateway.UserProfile{
 			User: &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester"},
 			Gigs: &gateway.GigPreviewList{
-				Items:   []gateway.GigPreview{{GigID: "gig-1"}},
-				Cursor:  "gigs-cursor",
-				HasMore: true,
+				Items:      []gateway.GigPreview{{GigID: "gig-1"}},
+				Page:       1,
+				Limit:      10,
+				TotalPages: 1,
 			},
 			Reviews: &gateway.ReviewList{
 				Items:   []gateway.Review{{ReviewID: "review-1"}},
