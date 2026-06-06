@@ -139,7 +139,8 @@ func (m *gigMapper) ToGetBySlugResponse(res *gigv1.GetGigBySlugResponse) *gatewa
 func (m *gigMapper) ToGetPreviewGigsByFreelancerUsernameRequest(req gateway.GetPreviewGigsByFreelancerUsernameRequest) *gigv1.GetPreviewGigsByFreelancerUsernameRequest {
 	return &gigv1.GetPreviewGigsByFreelancerUsernameRequest{
 		Username: req.Username,
-		Cursor:   req.Cursor,
+		Page:     req.Page,
+		Limit:    req.Limit,
 	}
 }
 
@@ -161,13 +162,64 @@ func (m *gigMapper) ToGetPreviewGigsByFreelancerUsernameResponse(res *gigv1.GetP
 			MinimumPriceCents: item.GetMinimumPriceCents(),
 			PictureURL:        item.GetPictureUrl(),
 			CreatedAt:         item.GetCreatedAt(),
+			Status:            item.GetStatus(),
+			PublishedAt:       item.GetPublishedAt(),
+			UpdatedAt:         item.GetUpdatedAt(),
+			RatingAvg:         item.GetRatingAvg(),
+			TotalReviews:      item.GetTotalReviews(),
+			OrderCount:        item.GetOrderCount(),
 		})
 	}
 
 	return &gateway.GigPreviewList{
-		Items:   items,
-		Cursor:  res.GetCursor(),
-		HasMore: res.GetHasMore(),
+		Items:      items,
+		Page:       res.GetPage(),
+		Limit:      res.GetLimit(),
+		TotalPages: res.GetTotalPages(),
+	}
+}
+
+func (m *gigMapper) ToGetMyGigsRequest(req gateway.GetMyGigsRequest) *gigv1.GetMyGigsRequest {
+	return &gigv1.GetMyGigsRequest{
+		UserId: req.UserID,
+		Status: req.Status,
+		Sort:   req.Sort,
+		Order:  req.Order,
+		Page:   req.Page,
+		Limit:  req.Limit,
+	}
+}
+
+func (m *gigMapper) ToGetMyGigsResponse(res *gigv1.GetMyGigsResponse) *gateway.GigPreviewPage {
+	if res == nil {
+		return nil
+	}
+	items := make([]gateway.GigPreview, 0, len(res.GetGigs()))
+	for _, item := range res.GetGigs() {
+		if item == nil {
+			continue
+		}
+		items = append(items, gateway.GigPreview{
+			GigID:             item.GetGigId(),
+			Slug:              item.GetSlug(),
+			Title:             item.GetTitle(),
+			ShortInfo:         item.GetShortInfo(),
+			MinimumPriceCents: item.GetMinimumPriceCents(),
+			PictureURL:        item.GetPictureUrl(),
+			CreatedAt:         item.GetCreatedAt(),
+			Status:            item.GetStatus(),
+			PublishedAt:       item.GetPublishedAt(),
+			UpdatedAt:         item.GetUpdatedAt(),
+			RatingAvg:         item.GetRatingAvg(),
+			TotalReviews:      item.GetTotalReviews(),
+			OrderCount:        item.GetOrderCount(),
+		})
+	}
+	return &gateway.GigPreviewPage{
+		Items:      items,
+		Page:       res.GetPage(),
+		Limit:      res.GetLimit(),
+		TotalPages: res.GetTotalPages(),
 	}
 }
 
@@ -230,7 +282,7 @@ func (m *gigMapper) toGig(res *gigv1.Gig) *gateway.Gig {
 		return nil
 	}
 
-	gig := &gateway.Gig{
+		gig := &gateway.Gig{
 		GigID:                 res.GetGigId(),
 		FreelancerID:          res.GetFreelancerId(),
 		Slug:                  res.GetSlug(),

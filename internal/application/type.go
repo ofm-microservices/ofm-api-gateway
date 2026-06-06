@@ -67,6 +67,7 @@ type GigService interface {
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
 	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
 	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
+	GetMyGigs(ctx context.Context, req gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 }
 
@@ -88,6 +89,7 @@ type GigPublisher interface {
 	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
 	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
 	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
+	GetMyGigs(ctx context.Context, req gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error)
 	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
 }
 

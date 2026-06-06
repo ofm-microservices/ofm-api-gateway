@@ -885,7 +885,8 @@ func (s *userProfileService) GetUserProfile(ctx context.Context, req gateway.Get
 		defer wg.Done()
 		gigs, err := s.gigs.GetPreviewGigsByFreelancerUsername(ctx, gateway.GetPreviewGigsByFreelancerUsernameRequest{
 			Username: username,
-			Cursor:   strings.TrimSpace(req.GigsCursor),
+			Page:     1,
+			Limit:    10,
 		})
 		mu.Lock()
 		defer mu.Unlock()

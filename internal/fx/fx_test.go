@@ -171,7 +171,8 @@ func (h *gigHandlerStub) HandleGetBySlug(*fiber.Ctx) error        { return nil }
 func (h *gigHandlerStub) HandleGetPreviewGigsByFreelancerUsername(*fiber.Ctx) error {
 	return nil
 }
-func (h *gigHandlerStub) HandlePublish(*fiber.Ctx) error { return nil }
+func (h *gigHandlerStub) HandleGetMyGigs(*fiber.Ctx) error { return nil }
+func (h *gigHandlerStub) HandlePublish(*fiber.Ctx) error   { return nil }
 
 type userHandlerStub struct {
 	registered bool
@@ -304,6 +305,10 @@ func (gigPublisherStub) GetPreviewGigsByFreelancerUsername(context.Context, gate
 	return &gateway.GigPreviewList{}, nil
 }
 
+func (gigPublisherStub) GetMyGigs(context.Context, gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error) {
+	return &gateway.GigPreviewPage{}, nil
+}
+
 func (gigPublisherStub) Publish(context.Context, gateway.PublishGigRequest) (*gateway.Gig, error) {
 	return &gateway.Gig{GigID: "gig-1"}, nil
 }
@@ -380,6 +385,10 @@ func (gigServiceStub) GetBySlug(context.Context, gateway.GetGigBySlugRequest) (*
 
 func (gigServiceStub) GetPreviewGigsByFreelancerUsername(context.Context, gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
 	return &gateway.GigPreviewList{}, nil
+}
+
+func (gigServiceStub) GetMyGigs(context.Context, gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error) {
+	return &gateway.GigPreviewPage{}, nil
 }
 
 func (gigServiceStub) Publish(context.Context, gateway.PublishGigRequest) (*gateway.Gig, error) {

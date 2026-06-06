@@ -30,6 +30,7 @@ type gigServiceStub struct {
 	draftReq     gateway.GetGigDraftRequest
 	slugReq      gateway.GetGigBySlugRequest
 	previewReq   gateway.GetPreviewGigsByFreelancerUsernameRequest
+	myGigsReq    gateway.GetMyGigsRequest
 	publishReq   gateway.PublishGigRequest
 
 	createRes    *gateway.Gig
@@ -40,6 +41,7 @@ type gigServiceStub struct {
 	draftRes     *gateway.Gig
 	slugRes      *gateway.Gig
 	previewRes   *gateway.GigPreviewList
+	myGigsRes    *gateway.GigPreviewPage
 	publishRes   *gateway.Gig
 
 	err error
@@ -83,6 +85,11 @@ func (s *gigServiceStub) GetBySlug(_ context.Context, req gateway.GetGigBySlugRe
 func (s *gigServiceStub) GetPreviewGigsByFreelancerUsername(_ context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
 	s.previewReq = req
 	return s.previewRes, s.err
+}
+
+func (s *gigServiceStub) GetMyGigs(_ context.Context, req gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error) {
+	s.myGigsReq = req
+	return s.myGigsRes, s.err
 }
 
 func (s *gigServiceStub) Publish(_ context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
@@ -212,13 +219,23 @@ var _ = Describe("GigHandler", func() {
 		Expect(service.slugReq.Cursor).To(Equal("abc"))
 	})
 
-	It("loads freelancer preview gigs by username without auth", func() {
-		service.previewRes = &gateway.GigPreviewList{Items: []gateway.GigPreview{{GigID: "gig-1"}}, HasMore: false}
-		resp, err := app.Test(gigJSONRequest("GET", "/v1/users/alex/gigs?cursor=abc", "", ""), -1)
+	It("loads owner gigs by username with auth", func() {
+		service.myGigsRes = &gateway.GigPreviewPage{Items: []gateway.GigPreview{{GigID: "gig-1"}}, Page: 1, Limit: 10, TotalPages: 1}
+		resp, err := app.Test(gigJSONRequest("GET", "/v1/users/freelancer-1/gigs?status=published&sort=updated_at&order=desc&page=2&limit=10", "", signedJWT("freelancer-1", testJWTSecret)), -1)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(fiber.StatusOK))
-		Expect(service.previewReq.Username).To(Equal("alex"))
-		Expect(service.previewReq.Cursor).To(Equal("abc"))
+		Expect(service.myGigsReq.UserID).To(Equal("freelancer-1"))
+		Expect(service.myGigsReq.Status).To(Equal("published"))
+		Expect(service.myGigsReq.Sort).To(Equal("updated_at"))
+		Expect(service.myGigsReq.Order).To(Equal("desc"))
+		Expect(service.myGigsReq.Page).To(Equal(int32(2)))
+		Expect(service.myGigsReq.Limit).To(Equal(int32(10)))
+	})
+
+	It("rejects owner gigs when username does not match token", func() {
+		resp, err := app.Test(gigJSONRequest("GET", "/v1/users/alex/gigs?page=1&limit=10", "", signedJWT("freelancer-1", testJWTSecret)), -1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(fiber.StatusForbidden))
 	})
 
 	It("returns not found for malformed public gig slugs", func() {
@@ -228,7 +245,7 @@ var _ = Describe("GigHandler", func() {
 	})
 
 	It("rejects requests without a bearer token", func() {
-		resp, err := app.Test(gigJSONRequest("GET", "/v1/gigs/gig-1/draft", "", ""), -1)
+		resp, err := app.Test(gigJSONRequest("GET", "/v1/users/alex/gigs?page=1&limit=10", "", ""), -1)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(fiber.StatusUnauthorized))
 	})
@@ -309,10 +326,10 @@ func signedJWT(subject, secret string) string {
 	now := time.Now().UTC()
 	header := map[string]string{"alg": "HS256", "typ": "JWT"}
 	claims := map[string]any{
-		"sub": subject,
+		"sub":      subject,
 		"username": subject,
-		"iat": now.Unix(),
-		"exp": now.Add(time.Hour).Unix(),
+		"iat":      now.Unix(),
+		"exp":      now.Add(time.Hour).Unix(),
 	}
 
 	headerJSON, _ := json.Marshal(header)

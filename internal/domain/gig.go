@@ -124,7 +124,8 @@ type GetGigBySlugRequest struct {
 // preview list by username.
 type GetPreviewGigsByFreelancerUsernameRequest struct {
 	Username string `json:"username"`
-	Cursor   string `json:"cursor"`
+	Page     int32  `json:"page"`
+	Limit    int32  `json:"limit"`
 }
 
 // GigPreview represents one item in the freelancer preview list.
@@ -136,13 +137,38 @@ type GigPreview struct {
 	MinimumPriceCents int64  `json:"minimum_price_cents"`
 	PictureURL        string `json:"picture_url"`
 	CreatedAt         string `json:"created_at"`
+	Status            string `json:"status"`
+	PublishedAt       string `json:"published_at"`
+	UpdatedAt         string `json:"updated_at"`
+	RatingAvg         float64 `json:"rating_avg"`
+	TotalReviews      int64   `json:"total_reviews"`
+	OrderCount        int64   `json:"order_count"`
 }
 
 // GigPreviewList wraps one page of freelancer preview gigs.
 type GigPreviewList struct {
-	Items   []GigPreview `json:"items"`
-	Cursor  string       `json:"cursor"`
-	HasMore bool         `json:"has_more"`
+	Items      []GigPreview `json:"items"`
+	Page       int32        `json:"page"`
+	Limit      int32        `json:"limit"`
+	TotalPages int32        `json:"total_pages"`
+}
+
+// GetMyGigsRequest loads the authenticated owner gig list.
+type GetMyGigsRequest struct {
+	UserID string `json:"user_id"`
+	Status string `json:"status"`
+	Sort   string `json:"sort"`
+	Order  string `json:"order"`
+	Page   int32  `json:"page"`
+	Limit  int32  `json:"limit"`
+}
+
+// GigPreviewPage wraps one page of owner gig previews.
+type GigPreviewPage struct {
+	Items      []GigPreview `json:"items"`
+	Page       int32        `json:"page"`
+	Limit      int32        `json:"limit"`
+	TotalPages int32        `json:"total_pages"`
 }
 
 // PublishGigRequest publishes a complete gig draft.

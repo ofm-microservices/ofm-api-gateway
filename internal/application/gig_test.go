@@ -19,6 +19,7 @@ type gigPublisherStub struct {
 	draftReq     gateway.GetGigDraftRequest
 	slugReq      gateway.GetGigBySlugRequest
 	previewReq   gateway.GetPreviewGigsByFreelancerUsernameRequest
+	myGigsReq    gateway.GetMyGigsRequest
 	publishReq   gateway.PublishGigRequest
 
 	createRes    *gateway.Gig
@@ -29,6 +30,7 @@ type gigPublisherStub struct {
 	draftRes     *gateway.Gig
 	slugRes      *gateway.Gig
 	previewRes   *gateway.GigPreviewList
+	myGigsRes    *gateway.GigPreviewPage
 	publishRes   *gateway.Gig
 
 	createErr    error
@@ -39,6 +41,7 @@ type gigPublisherStub struct {
 	draftErr     error
 	slugErr      error
 	previewErr   error
+	myGigsErr    error
 	publishErr   error
 }
 
@@ -93,6 +96,11 @@ func (s *gigPublisherStub) GetBySlug(_ context.Context, req gateway.GetGigBySlug
 func (s *gigPublisherStub) GetPreviewGigsByFreelancerUsername(_ context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error) {
 	s.previewReq = req
 	return s.previewRes, s.previewErr
+}
+
+func (s *gigPublisherStub) GetMyGigs(_ context.Context, req gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error) {
+	s.myGigsReq = req
+	return s.myGigsRes, s.myGigsErr
 }
 
 func (s *gigPublisherStub) Publish(_ context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error) {
@@ -323,9 +331,10 @@ var _ = Describe("GigService", func() {
 		users := &userClientStub{}
 		users.userRes = &gateway.User{UserID: "user-1", Username: "alex", DisplayName: "Alex Tester"}
 		gigs.previewRes = &gateway.GigPreviewList{
-			Items:   []gateway.GigPreview{{GigID: "gig-1"}},
-			Cursor:  "gigs-cursor",
-			HasMore: true,
+			Items:      []gateway.GigPreview{{GigID: "gig-1"}},
+			Page:       2,
+			Limit:      10,
+			TotalPages: 5,
 		}
 		reviews.sellerReviewsRes = &gateway.ListSellerReviewsResult{
 			Reviews: &gateway.ReviewList{
@@ -346,7 +355,8 @@ var _ = Describe("GigService", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.User.Username).To(Equal("alex"))
 		Expect(gigs.previewReq.Username).To(Equal("alex"))
-		Expect(gigs.previewReq.Cursor).To(Equal("g"))
+		Expect(gigs.previewReq.Page).To(Equal(int32(1)))
+		Expect(gigs.previewReq.Limit).To(Equal(int32(10)))
 		Expect(reviews.sellerReviewsReq.Username).To(Equal("alex"))
 		Expect(reviews.sellerReviewsReq.Cursor).To(Equal("r"))
 		Expect(res.Gigs.Items).To(HaveLen(1))
@@ -545,7 +555,7 @@ var _ = Describe("GigService", func() {
 		Expect(user.usernameReq).To(Equal("alex"))
 	})
 
-	It("passes the cursor through to review lookup", func() {
+	It("passes the page parameters through to review lookup", func() {
 		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 		pub.slugRes = &gateway.Gig{GigID: "019e706c-616e-7473-9c1a-838c33b75013", Slug: "my-gig-019e706c-616e-7473-9c1a-838c33b75013"}
