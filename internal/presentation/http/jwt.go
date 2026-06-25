@@ -123,6 +123,38 @@ func (r *jwtPrincipalResolver) Email(c *fiber.Ctx) (string, error) {
 	return strings.TrimSpace(claims.Email), nil
 }
 
+func (r *jwtPrincipalResolver) Roles(c *fiber.Ctx) ([]string, error) {
+	claims, err := r.Claims(c)
+	if err != nil {
+		return nil, err
+	}
+	roles := make([]string, 0, len(claims.Roles))
+	for _, role := range claims.Roles {
+		if strings.TrimSpace(role) == "" {
+			continue
+		}
+		roles = append(roles, strings.TrimSpace(role))
+	}
+	return roles, nil
+}
+
+func (r *jwtPrincipalResolver) HasRole(c *fiber.Ctx, role string) (bool, error) {
+	roles, err := r.Roles(c)
+	if err != nil {
+		return false, err
+	}
+	role = strings.TrimSpace(role)
+	if role == "" {
+		return false, nil
+	}
+	for _, candidate := range roles {
+		if strings.EqualFold(candidate, role) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func bearerToken(header string) (string, error) {
 	return commonjwt.ParseBearer(header)
 }

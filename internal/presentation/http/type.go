@@ -59,6 +59,8 @@ type GigPrincipalResolver interface {
 	FreelancerID(c *fiber.Ctx) (string, error)
 	Username(c *fiber.Ctx) (string, error)
 	Email(c *fiber.Ctx) (string, error)
+	Roles(c *fiber.Ctx) ([]string, error)
+	HasRole(c *fiber.Ctx, role string) (bool, error)
 }
 
 // GigHandler exposes the gig draft HTTP routes owned by api-gateway.
@@ -100,6 +102,7 @@ type OrderHandler interface {
 	HandleAcceptDelivery(c *fiber.Ctx) error
 	HandleRequestRevision(c *fiber.Ctx) error
 	HandleOpenDispute(c *fiber.Ctx) error
+	HandleResolveDispute(c *fiber.Ctx) error
 }
 
 // ReviewHandler exposes the buyer review HTTP routes owned by api-gateway.

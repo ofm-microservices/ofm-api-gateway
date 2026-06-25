@@ -112,6 +112,7 @@ type OrderCheckoutClient interface {
 	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
 	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
 	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
+	ResolveDispute(ctx context.Context, req gateway.ResolveDisputeRequest) (*gateway.ResolveDisputeResult, error)
 	Close() error
 }
 
@@ -158,6 +159,7 @@ type OrderService interface {
 	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
 	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
 	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
+	ResolveDispute(ctx context.Context, req gateway.ResolveDisputeRequest) (*gateway.ResolveDisputeResult, error)
 }
 
 // OrderPreviewService validates the public user-scoped order preview request

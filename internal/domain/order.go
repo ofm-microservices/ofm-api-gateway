@@ -7,13 +7,12 @@ import (
 
 // CreateOrderRequest starts the public order creation flow.
 type CreateOrderRequest struct {
-	BuyerID              string `json:"buyer_id"`
-	BuyerEmail           string `json:"buyer_email"`
-	GigID                string `json:"gig_id"`
-	PackageID            string `json:"package_id"`
-	RealtimeConnectionID string `json:"realtime_connection_id"`
-	IdempotencyKey       string `json:"idempotency_key"`
-	RequestedAt          string `json:"requested_at"`
+	BuyerID        string `json:"buyer_id"`
+	BuyerEmail     string `json:"buyer_email"`
+	GigID          string `json:"gig_id"`
+	PackageID      string `json:"package_id"`
+	IdempotencyKey string `json:"idempotency_key"`
+	RequestedAt    string `json:"requested_at"`
 }
 
 // CreateOrderResult reports that the gateway accepted the order command.
@@ -29,11 +28,10 @@ type CreateOrderResult struct {
 // ConfirmOrderRequest finalizes the order checkout flow and creates a payment
 // session.
 type ConfirmOrderRequest struct {
-	OrderID              string `json:"order_id"`
-	BuyerID              string `json:"buyer_id"`
-	RealtimeConnectionID string `json:"realtime_connection_id"`
-	IdempotencyKey       string `json:"idempotency_key"`
-	RequestedAt          string `json:"requested_at"`
+	OrderID        string `json:"order_id"`
+	BuyerID        string `json:"buyer_id"`
+	IdempotencyKey string `json:"idempotency_key"`
+	RequestedAt    string `json:"requested_at"`
 }
 
 // ConfirmOrderResult reports that checkout can proceed after confirmation.
@@ -90,10 +88,10 @@ type RequestRevisionResult struct {
 	CurrentStep string `json:"current_step"`
 }
 
-// OpenDisputeRequest opens a buyer dispute for the current delivery.
+// OpenDisputeRequest opens a dispute for the authenticated order owner.
 type OpenDisputeRequest struct {
 	OrderID     string `json:"order_id"`
-	BuyerID     string `json:"buyer_id"`
+	ActorID     string `json:"-"`
 	Reason      string `json:"reason"`
 	RequestedAt string `json:"requested_at"`
 }
@@ -105,6 +103,27 @@ type OpenDisputeResult struct {
 	CurrentStep string `json:"current_step"`
 }
 
+// ResolveDisputeRequest lets an admin split the disputed settlement between
+// the freelancer and the customer.
+type ResolveDisputeRequest struct {
+	OrderID              string `json:"order_id"`
+	AdminUserID          string `json:"admin_user_id"`
+	FreelancerPercentage int32  `json:"freelancer_percentage"`
+	CustomerPercentage   int32  `json:"customer_percentage"`
+	Reason               string `json:"reason"`
+	RequestedAt          string `json:"requested_at"`
+}
+
+// ResolveDisputeResult reports the settlement outcome after admin resolution.
+type ResolveDisputeResult struct {
+	OrderID          string `json:"order_id"`
+	Status           string `json:"status"`
+	CurrentStep      string `json:"current_step"`
+	PaymentReleaseID string `json:"payment_release_id"`
+	StripeTransferID string `json:"stripe_transfer_id"`
+	StripeRefundID   string `json:"stripe_refund_id"`
+}
+
 // ParticipantRole is the shared customer/freelancer view role used by user-scoped resources.
 type ParticipantRole string
 
@@ -112,6 +131,7 @@ const (
 	ParticipantRoleUnspecified ParticipantRole = ""
 	ParticipantRoleCustomer    ParticipantRole = "customer"
 	ParticipantRoleFreelancer  ParticipantRole = "freelancer"
+	RoleAdmin                                  = "admin"
 )
 
 // ParseParticipantRole validates a shared view role from query parameters.

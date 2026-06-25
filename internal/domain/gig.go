@@ -130,16 +130,16 @@ type GetPreviewGigsByFreelancerUsernameRequest struct {
 
 // GigPreview represents one item in the freelancer preview list.
 type GigPreview struct {
-	GigID             string `json:"gig_id"`
-	Slug              string `json:"slug"`
-	Title             string `json:"title"`
-	ShortInfo         string `json:"short_info"`
-	MinimumPriceCents int64  `json:"minimum_price_cents"`
-	PictureURL        string `json:"picture_url"`
-	CreatedAt         string `json:"created_at"`
-	Status            string `json:"status"`
-	PublishedAt       string `json:"published_at"`
-	UpdatedAt         string `json:"updated_at"`
+	GigID             string  `json:"gig_id"`
+	Slug              string  `json:"slug"`
+	Title             string  `json:"title"`
+	ShortInfo         string  `json:"short_info"`
+	MinimumPriceCents int64   `json:"minimum_price_cents"`
+	PictureURL        string  `json:"picture_url"`
+	CreatedAt         string  `json:"created_at"`
+	Status            string  `json:"status"`
+	PublishedAt       string  `json:"published_at"`
+	UpdatedAt         string  `json:"updated_at"`
 	RatingAvg         float64 `json:"rating_avg"`
 	TotalReviews      int64   `json:"total_reviews"`
 	OrderCount        int64   `json:"order_count"`

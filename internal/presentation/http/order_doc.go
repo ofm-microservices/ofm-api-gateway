@@ -159,10 +159,10 @@ func swaggerAcceptDeliveryDoc() {}
 // @Router /orders/{order_id}/request-revision [post]
 func swaggerRequestRevisionDoc() {}
 
-// swaggerOpenDisputeDoc documents the buyer dispute endpoint.
+// swaggerOpenDisputeDoc documents the order-owner dispute endpoint.
 //
 // @Summary Open dispute
-// @Description Opens a buyer dispute for the current delivery.
+// @Description Opens a dispute for the authenticated order owner.
 // @Tags orders
 // @Accept json
 // @Produce json

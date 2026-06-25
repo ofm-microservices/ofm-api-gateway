@@ -282,7 +282,7 @@ func (m *gigMapper) toGig(res *gigv1.Gig) *gateway.Gig {
 		return nil
 	}
 
-		gig := &gateway.Gig{
+	gig := &gateway.Gig{
 		GigID:                 res.GetGigId(),
 		FreelancerID:          res.GetFreelancerId(),
 		Slug:                  res.GetSlug(),

@@ -127,6 +127,14 @@ func (c *orderCheckoutClient) OpenDispute(ctx context.Context, req gateway.OpenD
 	return c.mapr.ToOpenDisputeResponse(res), nil
 }
 
+func (c *orderCheckoutClient) ResolveDispute(ctx context.Context, req gateway.ResolveDisputeRequest) (*gateway.ResolveDisputeResult, error) {
+	res, err := c.cl.ResolveDispute(ctx, c.mapr.ToResolveDisputeRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToError(err)
+	}
+	return c.mapr.ToResolveDisputeResponse(res), nil
+}
+
 func (c *orderCheckoutClient) Close() error {
 	if c == nil || c.conn == nil {
 		return nil

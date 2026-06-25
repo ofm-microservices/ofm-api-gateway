@@ -49,6 +49,7 @@ func (h *orderHandler) RegisterRoutes(router fiber.Router) {
 	orders.Post("/:order_id/accept", h.HandleAcceptDelivery)
 	orders.Post("/:order_id/request-revision", h.HandleRequestRevision)
 	orders.Post("/:order_id/dispute", h.HandleOpenDispute)
+	orders.Post("/:order_id/dispute/resolve", h.HandleResolveDispute)
 }
 
 // HandleCreateOrder validates and forwards the order start request.
@@ -66,7 +67,11 @@ func (h *orderHandler) HandleCreateOrder(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
 	req.BuyerID = buyerID
-	req.RealtimeConnectionID = strings.TrimSpace(firstNonEmpty(c.Get("X-Realtime-Connection-Id"), req.RealtimeConnectionID))
+	if req.BuyerEmail == "" {
+		if buyerEmail, emailErr := h.auth.Email(c); emailErr == nil {
+			req.BuyerEmail = buyerEmail
+		}
+	}
 
 	result, err := h.service.CreateOrder(c.UserContext(), req)
 	if err != nil {
@@ -77,7 +82,6 @@ func (h *orderHandler) HandleCreateOrder(c *fiber.Ctx) error {
 		logging.Operation("http.order.create"),
 		logging.DurationMS(time.Since(started)),
 		logging.String("buyer_id", buyerID),
-		logging.String("connection_id", req.RealtimeConnectionID),
 	)
 
 	return c.Status(fiber.StatusCreated).JSON(result)
@@ -100,7 +104,6 @@ func (h *orderHandler) HandleConfirmOrder(c *fiber.Ctx) error {
 	}
 	req.OrderID = c.Params("order_id")
 	req.BuyerID = buyerID
-	req.RealtimeConnectionID = strings.TrimSpace(firstNonEmpty(c.Get("X-Realtime-Connection-Id"), req.RealtimeConnectionID))
 
 	result, err := h.service.ConfirmOrder(c.UserContext(), req)
 	if err != nil {
@@ -111,7 +114,6 @@ func (h *orderHandler) HandleConfirmOrder(c *fiber.Ctx) error {
 		logging.Operation("http.order.confirm"),
 		logging.DurationMS(time.Since(started)),
 		logging.String("order_id", req.OrderID),
-		logging.String("connection_id", req.RealtimeConnectionID),
 	)
 
 	return c.Status(fiber.StatusOK).JSON(result)
@@ -272,7 +274,7 @@ func (h *orderHandler) HandleRequestRevision(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
-// HandleOpenDispute validates and forwards the buyer dispute request.
+// HandleOpenDispute validates and forwards an owner dispute request.
 func (h *orderHandler) HandleOpenDispute(c *fiber.Ctx) error {
 	started := time.Now()
 	log := logging.WithContext(c.UserContext(), h.log)
@@ -281,12 +283,12 @@ func (h *orderHandler) HandleOpenDispute(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
 	}
-	buyerID, err := h.auth.FreelancerID(c)
+	userID, err := h.auth.FreelancerID(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
 	req.OrderID = c.Params("order_id")
-	req.BuyerID = buyerID
+	req.ActorID = userID
 
 	result, err := h.service.OpenDispute(c.UserContext(), req)
 	if err != nil {
@@ -297,7 +299,45 @@ func (h *orderHandler) HandleOpenDispute(c *fiber.Ctx) error {
 		logging.Operation("http.order.open_dispute"),
 		logging.DurationMS(time.Since(started)),
 		logging.String("order_id", req.OrderID),
-		logging.String("buyer_id", buyerID),
+		logging.String("user_id", userID),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleResolveDispute validates and forwards the admin dispute settlement request.
+func (h *orderHandler) HandleResolveDispute(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+
+	var req gateway.ResolveDisputeRequest
+	if err := c.BodyParser(&req); err != nil && err.Error() != "EOF" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	adminID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	isAdmin, err := h.auth.HasRole(c, gateway.RoleAdmin)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	if !isAdmin {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.AdminUserID = adminID
+
+	result, err := h.service.ResolveDispute(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
+
+	log.Info("order dispute resolution accepted",
+		logging.Operation("http.order.resolve_dispute"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("order_id", req.OrderID),
+		logging.String("admin_user_id", adminID),
 	)
 
 	return c.Status(fiber.StatusOK).JSON(result)
@@ -317,7 +357,8 @@ func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrSelfOrderNotAllowed):
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
-	case errors.Is(err, gateway.ErrGigNotFound):
+	case errors.Is(err, gateway.ErrGigNotFound),
+		errors.Is(err, gateway.ErrOrderNotFound):
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderNotConfirmable),
 		errors.Is(err, gateway.ErrOrderRequirementsIncomplete),
@@ -328,6 +369,8 @@ func (h *orderHandler) mapOrderError(c *fiber.Ctx, err error) error {
 		errors.Is(err, gateway.ErrOrderNotRevisionable),
 		errors.Is(err, gateway.ErrOrderNotDisputable):
 		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrInvalidDisputeSplit):
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderReleaseFailed):
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderNotOwned):
