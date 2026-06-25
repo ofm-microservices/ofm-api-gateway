@@ -17,14 +17,12 @@ func newOrderCheckoutMapper() OrderCheckoutMapper { return &orderCheckoutMapper{
 
 func (m *orderCheckoutMapper) ToStartOrderRequest(req gateway.CreateOrderRequest) *ordercheckoutv1.StartOrderRequest {
 	return &ordercheckoutv1.StartOrderRequest{
-		BuyerUserId:          strings.TrimSpace(req.BuyerID),
-		BuyerEmail:           strings.TrimSpace(req.BuyerEmail),
-		GigId:                strings.TrimSpace(req.GigID),
-		PackageId:            strings.TrimSpace(req.PackageID),
-		IdempotencyKey:       strings.TrimSpace(req.IdempotencyKey),
-		CorrelationId:        strings.TrimSpace(req.RealtimeConnectionID),
-		RealtimeConnectionId: strings.TrimSpace(req.RealtimeConnectionID),
-		RequestedAt:          strings.TrimSpace(req.RequestedAt),
+		BuyerUserId:    strings.TrimSpace(req.BuyerID),
+		BuyerEmail:     strings.TrimSpace(req.BuyerEmail),
+		GigId:          strings.TrimSpace(req.GigID),
+		PackageId:      strings.TrimSpace(req.PackageID),
+		IdempotencyKey: strings.TrimSpace(req.IdempotencyKey),
+		RequestedAt:    strings.TrimSpace(req.RequestedAt),
 	}
 }
 
@@ -176,7 +174,7 @@ func (m *orderCheckoutMapper) ToRequestRevisionResponse(res *ordercheckoutv1.Req
 }
 
 func (m *orderCheckoutMapper) ToOpenDisputeRequest(req gateway.OpenDisputeRequest) *ordercheckoutv1.OpenDisputeRequest {
-	return &ordercheckoutv1.OpenDisputeRequest{OrderId: strings.TrimSpace(req.OrderID), BuyerUserId: strings.TrimSpace(req.BuyerID), Reason: strings.TrimSpace(req.Reason), RequestedAt: strings.TrimSpace(req.RequestedAt)}
+	return &ordercheckoutv1.OpenDisputeRequest{OrderId: strings.TrimSpace(req.OrderID), BuyerUserId: strings.TrimSpace(req.ActorID), Reason: strings.TrimSpace(req.Reason), RequestedAt: strings.TrimSpace(req.RequestedAt)}
 }
 
 func (m *orderCheckoutMapper) ToOpenDisputeResponse(res *ordercheckoutv1.OpenDisputeResponse) *gateway.OpenDisputeResult {
@@ -184,6 +182,31 @@ func (m *orderCheckoutMapper) ToOpenDisputeResponse(res *ordercheckoutv1.OpenDis
 		return &gateway.OpenDisputeResult{}
 	}
 	return &gateway.OpenDisputeResult{OrderID: res.GetOrderId(), Status: res.GetStatus(), CurrentStep: res.GetCurrentStep()}
+}
+
+func (m *orderCheckoutMapper) ToResolveDisputeRequest(req gateway.ResolveDisputeRequest) *ordercheckoutv1.ResolveDisputeRequest {
+	return &ordercheckoutv1.ResolveDisputeRequest{
+		OrderId:              strings.TrimSpace(req.OrderID),
+		AdminUserId:          strings.TrimSpace(req.AdminUserID),
+		FreelancerPercentage: req.FreelancerPercentage,
+		CustomerPercentage:   req.CustomerPercentage,
+		Reason:               strings.TrimSpace(req.Reason),
+		RequestedAt:          strings.TrimSpace(req.RequestedAt),
+	}
+}
+
+func (m *orderCheckoutMapper) ToResolveDisputeResponse(res *ordercheckoutv1.ResolveDisputeResponse) *gateway.ResolveDisputeResult {
+	if res == nil {
+		return &gateway.ResolveDisputeResult{}
+	}
+	return &gateway.ResolveDisputeResult{
+		OrderID:          res.GetOrderId(),
+		Status:           res.GetStatus(),
+		CurrentStep:      res.GetCurrentStep(),
+		PaymentReleaseID: res.GetPaymentReleaseId(),
+		StripeTransferID: res.GetStripeTransferId(),
+		StripeRefundID:   res.GetStripeRefundId(),
+	}
 }
 
 func (m *orderCheckoutMapper) ToError(err error) error {
@@ -196,6 +219,9 @@ func (m *orderCheckoutMapper) ToError(err error) error {
 	}
 	switch st.Code() {
 	case codes.InvalidArgument:
+		if st.Message() == gateway.ErrInvalidDisputeSplit.Error() {
+			return gateway.ErrInvalidDisputeSplit
+		}
 		return gateway.ErrFailedToCreateOrder
 	case codes.PermissionDenied:
 		if st.Message() == gateway.ErrOrderNotOwned.Error() {
@@ -206,7 +232,10 @@ func (m *orderCheckoutMapper) ToError(err error) error {
 		if st.Message() == gateway.ErrGigNotFound.Error() {
 			return gateway.ErrGigNotFound
 		}
-		return gateway.ErrFailedToGetGig
+		if st.Message() == gateway.ErrOrderNotFound.Error() {
+			return gateway.ErrOrderNotFound
+		}
+		return err
 	case codes.FailedPrecondition:
 		switch st.Message() {
 		case gateway.ErrSelfOrderNotAllowed.Error():

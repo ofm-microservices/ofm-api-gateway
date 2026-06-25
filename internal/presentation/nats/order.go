@@ -59,7 +59,6 @@ func (p *orderPublisher) StartOrder(ctx context.Context, event gateway.CreateOrd
 	p.log.Info("publishing order event",
 		logging.String("buyer_id", event.BuyerID),
 		logging.String("gig_id", event.GigID),
-		logging.String("connection_id", event.RealtimeConnectionID),
 	)
 
 	if err := p.nc.Publish(p.subject, payload); err != nil {

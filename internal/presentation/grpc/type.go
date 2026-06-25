@@ -97,6 +97,7 @@ type OrderCheckoutClient interface {
 	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
 	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
 	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
+	ResolveDispute(ctx context.Context, req gateway.ResolveDisputeRequest) (*gateway.ResolveDisputeResult, error)
 	Close() error
 }
 
@@ -220,6 +221,8 @@ type OrderCheckoutMapper interface {
 	ToRequestRevisionResponse(res *ordercheckoutv1.RequestRevisionResponse) *gateway.RequestRevisionResult
 	ToOpenDisputeRequest(req gateway.OpenDisputeRequest) *ordercheckoutv1.OpenDisputeRequest
 	ToOpenDisputeResponse(res *ordercheckoutv1.OpenDisputeResponse) *gateway.OpenDisputeResult
+	ToResolveDisputeRequest(req gateway.ResolveDisputeRequest) *ordercheckoutv1.ResolveDisputeRequest
+	ToResolveDisputeResponse(res *ordercheckoutv1.ResolveDisputeResponse) *gateway.ResolveDisputeResult
 	ToError(err error) error
 }
 

@@ -221,6 +221,7 @@ func (h *orderHandlerStub) HandleDeliverOrder(*fiber.Ctx) error       { return n
 func (h *orderHandlerStub) HandleAcceptDelivery(*fiber.Ctx) error     { return nil }
 func (h *orderHandlerStub) HandleRequestRevision(*fiber.Ctx) error    { return nil }
 func (h *orderHandlerStub) HandleOpenDispute(*fiber.Ctx) error        { return nil }
+func (h *orderHandlerStub) HandleResolveDispute(*fiber.Ctx) error     { return nil }
 
 type reviewHandlerStub struct {
 	registered bool

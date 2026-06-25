@@ -439,10 +439,6 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 	if buyerEmail == "" {
 		buyerEmail = ""
 	}
-	connectionID := strings.TrimSpace(req.RealtimeConnectionID)
-	if connectionID != "" && !validRealtimeConnectionID(connectionID) {
-		return nil, gateway.ErrInvalidOrderConnectionID
-	}
 	gigID := strings.TrimSpace(req.GigID)
 	if gigID == "" {
 		return nil, gateway.ErrInvalidOrderGigID
@@ -453,13 +449,12 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 	}
 
 	result, err := s.client.StartOrder(ctx, gateway.CreateOrderRequest{
-		BuyerID:              buyerID,
-		BuyerEmail:           buyerEmail,
-		RealtimeConnectionID: connectionID,
-		GigID:                gigID,
-		PackageID:            packageID,
-		IdempotencyKey:       uuid.Must(uuid.NewV7()).String(),
-		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
+		BuyerID:        buyerID,
+		BuyerEmail:     buyerEmail,
+		GigID:          gigID,
+		PackageID:      packageID,
+		IdempotencyKey: uuid.Must(uuid.NewV7()).String(),
+		RequestedAt:    time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		log.Error("failed to start order",
@@ -603,17 +598,11 @@ func (s *orderService) ConfirmOrder(ctx context.Context, req gateway.ConfirmOrde
 	if orderID == "" {
 		return nil, gateway.ErrInvalidOrderGigID
 	}
-	connectionID := strings.TrimSpace(req.RealtimeConnectionID)
-	if connectionID != "" && !validRealtimeConnectionID(connectionID) {
-		return nil, gateway.ErrInvalidOrderConnectionID
-	}
-
 	result, err := s.client.ConfirmOrder(ctx, gateway.ConfirmOrderRequest{
-		OrderID:              orderID,
-		BuyerID:              strings.TrimSpace(req.BuyerID),
-		RealtimeConnectionID: connectionID,
-		IdempotencyKey:       strings.TrimSpace(req.IdempotencyKey),
-		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
+		OrderID:        orderID,
+		BuyerID:        strings.TrimSpace(req.BuyerID),
+		IdempotencyKey: strings.TrimSpace(req.IdempotencyKey),
+		RequestedAt:    time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		log.Error("failed to confirm order",
@@ -746,11 +735,11 @@ func (s *orderService) RequestRevision(ctx context.Context, req gateway.RequestR
 func (s *orderService) OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error) {
 	log := logging.WithContext(ctx, s.log)
 	orderID := strings.TrimSpace(req.OrderID)
-	buyerID := strings.TrimSpace(req.BuyerID)
+	actorID := strings.TrimSpace(req.ActorID)
 	if orderID == "" {
 		return nil, gateway.ErrInvalidOrderID
 	}
-	if buyerID == "" {
+	if actorID == "" {
 		return nil, gateway.ErrInvalidOrderBuyerID
 	}
 	if strings.TrimSpace(req.Reason) == "" {
@@ -758,13 +747,47 @@ func (s *orderService) OpenDispute(ctx context.Context, req gateway.OpenDisputeR
 	}
 	result, err := s.client.OpenDispute(ctx, gateway.OpenDisputeRequest{
 		OrderID:     orderID,
-		BuyerID:     buyerID,
+		ActorID:     actorID,
 		Reason:      strings.TrimSpace(req.Reason),
 		RequestedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		log.Error("failed to open order dispute",
 			logging.Operation("order.open_dispute"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.String("order_id", orderID),
+			logging.String("user_id", actorID),
+			logging.Err(err),
+		)
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *orderService) ResolveDispute(ctx context.Context, req gateway.ResolveDisputeRequest) (*gateway.ResolveDisputeResult, error) {
+	log := logging.WithContext(ctx, s.log)
+	orderID := strings.TrimSpace(req.OrderID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if req.FreelancerPercentage < 0 || req.CustomerPercentage < 0 || req.FreelancerPercentage+req.CustomerPercentage != 100 {
+		return nil, gateway.ErrInvalidDisputeSplit
+	}
+	if strings.TrimSpace(req.Reason) == "" {
+		return nil, gateway.ErrInvalidOrderReason
+	}
+	result, err := s.client.ResolveDispute(ctx, gateway.ResolveDisputeRequest{
+		OrderID:              orderID,
+		AdminUserID:          strings.TrimSpace(req.AdminUserID),
+		FreelancerPercentage: req.FreelancerPercentage,
+		CustomerPercentage:   req.CustomerPercentage,
+		Reason:               strings.TrimSpace(req.Reason),
+		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		log.Error("failed to resolve order dispute",
+			logging.Operation("order.resolve_dispute"),
 			logging.Attempt(1),
 			logging.Retryable(false),
 			logging.String("order_id", orderID),
@@ -950,9 +973,4 @@ func (s *authMeService) GetMe(ctx context.Context, userID string) (*gateway.User
 	}
 
 	return user, nil
-}
-
-func validRealtimeConnectionID(id string) bool {
-	parts := strings.Split(strings.TrimSpace(id), ".")
-	return len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && strings.TrimSpace(parts[1]) != ""
 }
