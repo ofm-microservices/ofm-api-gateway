@@ -45,6 +45,9 @@ type OrderService = service.OrderService
 // OrderPreviewService aliases the application boundary for user-scoped order previews.
 type OrderPreviewService = service.OrderPreviewService
 
+// ChatService aliases the application boundary for authenticated order chats.
+type ChatService = service.ChatService
+
 // ReviewService aliases the application review orchestration contract used by
 // the HTTP layer.
 type ReviewService = service.ReviewService
@@ -89,6 +92,17 @@ type UserOrderHandler interface {
 	HandleGetOrderPreviewByID(c *fiber.Ctx) error
 	HandleGetOrderRequirementsByID(c *fiber.Ctx) error
 	HandleGetOrderDeliveryByID(c *fiber.Ctx) error
+}
+
+// ChatHandler exposes the authenticated user-scoped order chat route group.
+type ChatHandler interface {
+	RegisterRoutes(router fiber.Router)
+	HandleGetOrderChat(c *fiber.Ctx) error
+	HandleCreateMessage(c *fiber.Ctx) error
+	HandleEditMessage(c *fiber.Ctx) error
+	HandleDeleteMessage(c *fiber.Ctx) error
+	HandleCreateAttachmentUploadURL(c *fiber.Ctx) error
+	HandleCompleteAttachmentUpload(c *fiber.Ctx) error
 }
 
 // OrderHandler exposes the create-order HTTP route owned by api-gateway.

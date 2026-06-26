@@ -10,6 +10,7 @@ var (
 	ErrNilUserClient              = errors.New("user client is nil")
 	ErrNilOrderClient             = errors.New("order client is nil")
 	ErrNilPaymentByOrderClient    = errors.New("payment by order client is nil")
+	ErrNilChatClient              = errors.New("chat client is nil")
 	ErrNilReviewClient            = errors.New("review client is nil")
 	ErrNilSearchClient            = errors.New("search client is nil")
 	ErrNilPaymentOnboardingClient = errors.New("payment onboarding client is nil")

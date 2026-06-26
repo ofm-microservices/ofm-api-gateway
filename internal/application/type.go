@@ -170,6 +170,27 @@ type OrderPreviewService interface {
 	GetOrderDeliveryByID(ctx context.Context, req gateway.GetOrderDeliveryByIDRequest) (*gateway.GetOrderDeliveryByIDResult, error)
 }
 
+// ChatClient is the outbound gRPC boundary for chat-service.
+type ChatClient interface {
+	GetOrderChat(ctx context.Context, req gateway.GetOrderChatRequest) (*gateway.GetOrderChatResult, error)
+	CreateMessage(ctx context.Context, req gateway.CreateChatMessageRequest) (*gateway.ChatMessage, error)
+	EditMessage(ctx context.Context, req gateway.EditChatMessageRequest) (*gateway.ChatMessage, error)
+	DeleteMessage(ctx context.Context, req gateway.DeleteChatMessageRequest) (*gateway.ChatMessage, error)
+	CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateChatAttachmentUploadURLRequest) (*gateway.CreateChatAttachmentUploadURLResult, error)
+	CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteChatAttachmentUploadRequest) (*gateway.ChatAttachment, error)
+	Close() error
+}
+
+// ChatService validates public chat requests and delegates to chat-service.
+type ChatService interface {
+	GetOrderChat(ctx context.Context, req gateway.GetOrderChatRequest) (*gateway.GetOrderChatResult, error)
+	CreateMessage(ctx context.Context, req gateway.CreateChatMessageRequest) (*gateway.ChatMessage, error)
+	EditMessage(ctx context.Context, req gateway.EditChatMessageRequest) (*gateway.ChatMessage, error)
+	DeleteMessage(ctx context.Context, req gateway.DeleteChatMessageRequest) (*gateway.ChatMessage, error)
+	CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateChatAttachmentUploadURLRequest) (*gateway.CreateChatAttachmentUploadURLResult, error)
+	CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteChatAttachmentUploadRequest) (*gateway.ChatAttachment, error)
+}
+
 // ReviewService validates public review requests and delegates to review-service.
 type ReviewService interface {
 	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)

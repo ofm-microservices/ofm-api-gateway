@@ -18,6 +18,7 @@ var MessagingModule = fx.Options(
 	fx.Provide(ProvideGigPublisher),
 	fx.Provide(ProvideOrderPublisher),
 	fx.Provide(ProvideOrderPreviewClient),
+	fx.Provide(ProvideChatClient),
 	fx.Provide(ProvidePaymentByOrderClient),
 	fx.Provide(ProvidePaymentOnboardingPublisher),
 	fx.Provide(ProvideUserClient),
@@ -158,6 +159,26 @@ func ProvideOrderPreviewClient(
 		},
 	})
 
+	return client, nil
+}
+
+// ProvideChatClient constructs the chat-service client used for order chat flows.
+func ProvideChatClient(
+	lc fx.Lifecycle,
+	cfg *config.Config,
+	lg logging.Logger,
+) (service.ChatClient, error) {
+	client, err := grpcclient.NewChatClient(cfg.ChatService, lg)
+	if err != nil {
+		lg.Error("connect chat service grpc failed", logging.Err(err))
+		return nil, err
+	}
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			client.Close()
+			return nil
+		},
+	})
 	return client, nil
 }
 

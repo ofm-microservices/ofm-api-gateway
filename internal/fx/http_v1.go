@@ -14,6 +14,7 @@ var HTTPV1Module = fx.Options(
 	fx.Provide(ProvideHTTPV1AuthHandler),
 	fx.Provide(ProvideHTTPV1UserHandler),
 	fx.Provide(ProvideHTTPV1UserOrderHandler),
+	fx.Provide(ProvideHTTPV1ChatHandler),
 	fx.Provide(ProvideHTTPV1GigHandler),
 	fx.Provide(ProvideHTTPV1OrderHandler),
 	fx.Provide(ProvideHTTPV1ReviewHandler),
@@ -59,6 +60,15 @@ func ProvideHTTPV1UserOrderHandler(
 	return httpserver.NewUserOrderHandler(service, cfg.JWT.AccessSecret, lg)
 }
 
+// ProvideHTTPV1ChatHandler constructs the authenticated user order chat HTTP handler.
+func ProvideHTTPV1ChatHandler(
+	cfg *config.Config,
+	service httpserver.ChatService,
+	lg logging.Logger,
+) (httpserver.ChatHandler, error) {
+	return httpserver.NewChatHandler(service, cfg.JWT.AccessSecret, lg)
+}
+
 // ProvideHTTPV1OrderHandler constructs the versioned order HTTP handler.
 func ProvideHTTPV1OrderHandler(
 	cfg *config.Config,
@@ -95,13 +105,14 @@ func ProvideHTTPV1OnboardingHandler(
 }
 
 // InvokeRegisterHTTPV1Routes registers versioned HTTP routes on the server.
-func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, userHandler httpserver.UserHandler, userOrderHandler httpserver.UserOrderHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, reviewHandler httpserver.ReviewHandler, searchHandler httpserver.SearchHandler, onboardingHandler httpserver.OnboardingHandler) {
+func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, userHandler httpserver.UserHandler, userOrderHandler httpserver.UserOrderHandler, chatHandler httpserver.ChatHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, reviewHandler httpserver.ReviewHandler, searchHandler httpserver.SearchHandler, onboardingHandler httpserver.OnboardingHandler) {
 	srv.App().Get("/v1/search", searchHandler.HandleSearch)
 
 	v1 := srv.App().Group("/v1")
 	authHandler.RegisterRoutes(v1)
 	userHandler.RegisterRoutes(v1)
 	userOrderHandler.RegisterRoutes(v1)
+	chatHandler.RegisterRoutes(v1)
 	gigHandler.RegisterRoutes(v1)
 	orderHandler.RegisterRoutes(v1)
 	reviewHandler.RegisterRoutes(v1)

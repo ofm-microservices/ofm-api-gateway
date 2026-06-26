@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	authv1 "github.com/ofm-microservices/ofm-common/proto/auth/v1"
+	chatv1 "github.com/ofm-microservices/ofm-common/proto/chat/v1"
 	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
 	ordercheckoutv1 "github.com/ofm-microservices/ofm-common/proto/ordercheckout/v1"
 	orderwritev1 "github.com/ofm-microservices/ofm-common/proto/orderwrite/v1"
@@ -18,6 +19,7 @@ import (
 
 // Logger aliases the shared logger contract used by the gRPC adapter.
 type Logger = logging.Logger
+type ChatServiceConfig = config.ChatServiceConfig
 
 // SignUpRequest aliases the gateway-domain signup request transported over gRPC.
 type SignUpRequest = gateway.SignUpRequest
@@ -106,6 +108,17 @@ type OrderPreviewClient interface {
 	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
 	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
 	GetOrderDeliveryByID(ctx context.Context, req gateway.GetOrderDeliveryByIDRequest) (*gateway.GetOrderDeliveryByIDResult, error)
+	Close() error
+}
+
+// ChatClient is the gateway-facing gRPC adapter for chat-service.
+type ChatClient interface {
+	GetOrderChat(ctx context.Context, req gateway.GetOrderChatRequest) (*gateway.GetOrderChatResult, error)
+	CreateMessage(ctx context.Context, req gateway.CreateChatMessageRequest) (*gateway.ChatMessage, error)
+	EditMessage(ctx context.Context, req gateway.EditChatMessageRequest) (*gateway.ChatMessage, error)
+	DeleteMessage(ctx context.Context, req gateway.DeleteChatMessageRequest) (*gateway.ChatMessage, error)
+	CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateChatAttachmentUploadURLRequest) (*gateway.CreateChatAttachmentUploadURLResult, error)
+	CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteChatAttachmentUploadRequest) (*gateway.ChatAttachment, error)
 	Close() error
 }
 
@@ -235,6 +248,23 @@ type OrderPreviewMapper interface {
 	ToGetOrderRequirementsByIDResponse(res *orderwritev1.GetOrderRequirementsByIDResponse) *gateway.GetOrderRequirementsByIDResult
 	ToGetOrderDeliveryByIDRequest(req gateway.GetOrderDeliveryByIDRequest) *orderwritev1.GetOrderDeliveryByIDRequest
 	ToGetOrderDeliveryByIDResponse(res *orderwritev1.GetOrderDeliveryByIDResponse) *gateway.GetOrderDeliveryByIDResult
+	ToError(err error) error
+}
+
+// ChatMapper translates between gateway chat types and the shared chat gRPC contract.
+type ChatMapper interface {
+	ToGetOrderChatRequest(req gateway.GetOrderChatRequest) *chatv1.GetOrderChatRequest
+	ToGetOrderChatResponse(res *chatv1.GetOrderChatResponse) *gateway.GetOrderChatResult
+	ToCreateMessageRequest(req gateway.CreateChatMessageRequest) *chatv1.CreateMessageRequest
+	ToCreateMessageResponse(res *chatv1.CreateMessageResponse) *gateway.ChatMessage
+	ToEditMessageRequest(req gateway.EditChatMessageRequest) *chatv1.EditMessageRequest
+	ToEditMessageResponse(res *chatv1.EditMessageResponse) *gateway.ChatMessage
+	ToDeleteMessageRequest(req gateway.DeleteChatMessageRequest) *chatv1.DeleteMessageRequest
+	ToDeleteMessageResponse(res *chatv1.DeleteMessageResponse) *gateway.ChatMessage
+	ToCreateAttachmentUploadURLRequest(req gateway.CreateChatAttachmentUploadURLRequest) *chatv1.CreateAttachmentUploadURLRequest
+	ToCreateAttachmentUploadURLResponse(res *chatv1.CreateAttachmentUploadURLResponse) *gateway.CreateChatAttachmentUploadURLResult
+	ToCompleteAttachmentUploadRequest(req gateway.CompleteChatAttachmentUploadRequest) *chatv1.CompleteAttachmentUploadRequest
+	ToCompleteAttachmentUploadResponse(res *chatv1.CompleteAttachmentUploadResponse) *gateway.ChatAttachment
 	ToError(err error) error
 }
 

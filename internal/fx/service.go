@@ -16,6 +16,7 @@ var ServiceModule = fx.Options(
 	fx.Provide(ProvideUserProfileService),
 	fx.Provide(ProvideOrderService),
 	fx.Provide(ProvideOrderPreviewService),
+	fx.Provide(ProvideChatService),
 	fx.Provide(ProvidePaymentOnboardingService),
 	fx.Provide(ProvideReviewService),
 	fx.Provide(ProvideSearchService),
@@ -82,6 +83,14 @@ func ProvideOrderPreviewService(
 	lg logging.Logger,
 ) (service.OrderPreviewService, error) {
 	return service.NewOrderPreview(client, payments, lg)
+}
+
+// ProvideChatService constructs the chat application service.
+func ProvideChatService(
+	client service.ChatClient,
+	lg logging.Logger,
+) (service.ChatService, error) {
+	return service.NewChat(client, lg)
 }
 
 // ProvidePaymentOnboardingService constructs the onboarding application service.
