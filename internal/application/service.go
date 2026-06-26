@@ -38,6 +38,11 @@ type orderPreviewService struct {
 	log      Logger
 }
 
+type chatService struct {
+	client ChatClient
+	log    Logger
+}
+
 type onboardingService struct {
 	client PaymentOnboardingPublisher
 	log    Logger
@@ -58,6 +63,137 @@ type userProfileService struct {
 type searchService struct {
 	client SearchClient
 	log    Logger
+}
+
+func (s *chatService) GetOrderChat(ctx context.Context, req gateway.GetOrderChatRequest) (*gateway.GetOrderChatResult, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	if req.Limit < 0 {
+		return nil, gateway.ErrInvalidChatCursor
+	}
+	return s.client.GetOrderChat(ctx, gateway.GetOrderChatRequest{
+		OrderID: orderID,
+		UserID:  userID,
+		Cursor:  strings.TrimSpace(req.Cursor),
+		Limit:   req.Limit,
+	})
+}
+
+func (s *chatService) CreateMessage(ctx context.Context, req gateway.CreateChatMessageRequest) (*gateway.ChatMessage, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	if strings.TrimSpace(req.Text) == "" && len(req.AttachmentIDs) == 0 {
+		return nil, gateway.ErrInvalidOrderMessage
+	}
+	return s.client.CreateMessage(ctx, gateway.CreateChatMessageRequest{
+		OrderID:       orderID,
+		UserID:        userID,
+		Text:          strings.TrimSpace(req.Text),
+		AttachmentIDs: append([]string(nil), req.AttachmentIDs...),
+	})
+}
+
+func (s *chatService) EditMessage(ctx context.Context, req gateway.EditChatMessageRequest) (*gateway.ChatMessage, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	messageID := strings.TrimSpace(req.MessageID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	if messageID == "" {
+		return nil, gateway.ErrInvalidChatMessageID
+	}
+	if strings.TrimSpace(req.Text) == "" {
+		return nil, gateway.ErrInvalidOrderMessage
+	}
+	return s.client.EditMessage(ctx, gateway.EditChatMessageRequest{
+		OrderID:   orderID,
+		UserID:    userID,
+		MessageID: messageID,
+		Text:      strings.TrimSpace(req.Text),
+	})
+}
+
+func (s *chatService) DeleteMessage(ctx context.Context, req gateway.DeleteChatMessageRequest) (*gateway.ChatMessage, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	messageID := strings.TrimSpace(req.MessageID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	if messageID == "" {
+		return nil, gateway.ErrInvalidChatMessageID
+	}
+	return s.client.DeleteMessage(ctx, gateway.DeleteChatMessageRequest{
+		OrderID:   orderID,
+		UserID:    userID,
+		MessageID: messageID,
+	})
+}
+
+func (s *chatService) CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateChatAttachmentUploadURLRequest) (*gateway.CreateChatAttachmentUploadURLResult, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	if strings.TrimSpace(req.Filename) == "" {
+		return nil, gateway.ErrInvalidChatFilename
+	}
+	if strings.TrimSpace(req.ContentType) == "" {
+		return nil, gateway.ErrInvalidChatContentType
+	}
+	if req.SizeBytes <= 0 {
+		return nil, gateway.ErrInvalidChatSizeBytes
+	}
+	return s.client.CreateAttachmentUploadURL(ctx, gateway.CreateChatAttachmentUploadURLRequest{
+		OrderID:     orderID,
+		UserID:      userID,
+		Filename:    strings.TrimSpace(req.Filename),
+		ContentType: strings.TrimSpace(req.ContentType),
+		SizeBytes:   req.SizeBytes,
+	})
+}
+
+func (s *chatService) CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteChatAttachmentUploadRequest) (*gateway.ChatAttachment, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	userID := strings.TrimSpace(req.UserID)
+	fileID := strings.TrimSpace(req.FileID)
+	if orderID == "" {
+		return nil, gateway.ErrInvalidOrderID
+	}
+	if userID == "" {
+		return nil, gateway.ErrInvalidUserID
+	}
+	if fileID == "" {
+		return nil, gateway.ErrInvalidChatFileID
+	}
+	return s.client.CompleteAttachmentUpload(ctx, gateway.CompleteChatAttachmentUploadRequest{
+		OrderID: orderID,
+		UserID:  userID,
+		FileID:  fileID,
+	})
 }
 
 // New constructs the application service responsible for starting
@@ -144,6 +280,20 @@ func NewOrderPreview(client OrderPreviewClient, payments PaymentByOrderClient, l
 		client:   client,
 		payments: payments,
 		log:      log.With(logging.String("module", "order-preview-application")),
+	}, nil
+}
+
+// NewChat constructs the application service responsible for order chat flows.
+func NewChat(client ChatClient, log Logger) (ChatService, error) {
+	if client == nil {
+		return nil, ErrNilChatClient
+	}
+	if log == nil {
+		return nil, ErrNilLogger
+	}
+	return &chatService{
+		client: client,
+		log:    log.With(logging.String("module", "chat-application")),
 	}, nil
 }
 

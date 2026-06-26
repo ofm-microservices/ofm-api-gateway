@@ -22,6 +22,7 @@ type Config struct {
 	AuthService      AuthServiceConfig
 	GigService       GigServiceConfig
 	PaymentService   PaymentServiceConfig
+	ChatService      ChatServiceConfig
 }
 
 // Load reads environment variables into Config and applies defaults.

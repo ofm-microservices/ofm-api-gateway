@@ -88,6 +88,32 @@ func (userProfileServiceStub) GetUserProfile(context.Context, gateway.GetUserPro
 	}, nil
 }
 
+type chatServiceStub struct{}
+
+func (chatServiceStub) GetOrderChat(context.Context, gateway.GetOrderChatRequest) (*gateway.GetOrderChatResult, error) {
+	return &gateway.GetOrderChatResult{}, nil
+}
+
+func (chatServiceStub) CreateMessage(context.Context, gateway.CreateChatMessageRequest) (*gateway.ChatMessage, error) {
+	return &gateway.ChatMessage{}, nil
+}
+
+func (chatServiceStub) EditMessage(context.Context, gateway.EditChatMessageRequest) (*gateway.ChatMessage, error) {
+	return &gateway.ChatMessage{}, nil
+}
+
+func (chatServiceStub) DeleteMessage(context.Context, gateway.DeleteChatMessageRequest) (*gateway.ChatMessage, error) {
+	return &gateway.ChatMessage{}, nil
+}
+
+func (chatServiceStub) CreateAttachmentUploadURL(context.Context, gateway.CreateChatAttachmentUploadURLRequest) (*gateway.CreateChatAttachmentUploadURLResult, error) {
+	return &gateway.CreateChatAttachmentUploadURLResult{}, nil
+}
+
+func (chatServiceStub) CompleteAttachmentUpload(context.Context, gateway.CompleteChatAttachmentUploadRequest) (*gateway.ChatAttachment, error) {
+	return &gateway.ChatAttachment{}, nil
+}
+
 type registrationServiceStub struct{}
 
 func (registrationServiceStub) SignUp(context.Context, gateway.SignUpRequest) (*gateway.SignUpResult, error) {
@@ -201,6 +227,24 @@ func (h *userOrderHandlerStub) RegisterRoutes(router fiber.Router) {
 func (h *userOrderHandlerStub) HandleGetOrderPreviewByID(*fiber.Ctx) error      { return nil }
 func (h *userOrderHandlerStub) HandleGetOrderRequirementsByID(*fiber.Ctx) error { return nil }
 func (h *userOrderHandlerStub) HandleGetOrderDeliveryByID(*fiber.Ctx) error     { return nil }
+
+type chatHandlerStub struct {
+	registered bool
+}
+
+func (h *chatHandlerStub) RegisterRoutes(router fiber.Router) {
+	h.registered = true
+	router.Get("/users/:username/orders/:order_id/chat", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+}
+
+func (h *chatHandlerStub) HandleGetOrderChat(*fiber.Ctx) error              { return nil }
+func (h *chatHandlerStub) HandleCreateMessage(*fiber.Ctx) error             { return nil }
+func (h *chatHandlerStub) HandleEditMessage(*fiber.Ctx) error               { return nil }
+func (h *chatHandlerStub) HandleDeleteMessage(*fiber.Ctx) error             { return nil }
+func (h *chatHandlerStub) HandleCreateAttachmentUploadURL(*fiber.Ctx) error { return nil }
+func (h *chatHandlerStub) HandleCompleteAttachmentUpload(*fiber.Ctx) error  { return nil }
 
 type orderHandlerStub struct {
 	registered bool
@@ -544,21 +588,30 @@ var _ = Describe("FX providers", func() {
 		Expect(handler).NotTo(BeNil())
 	})
 
+	It("constructs the v1 chat handler", func() {
+		handler, err := ProvideHTTPV1ChatHandler(cfg, chatServiceStub{}, lg)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(handler).NotTo(BeNil())
+	})
+
 	It("registers versioned routes", func() {
 		srv := &httpServerStub{app: fiber.New()}
 		handler := &authHandlerStub{}
 		userHandler := &userHandlerStub{}
 		userOrderHandler := &userOrderHandlerStub{}
+		chatHandler := &chatHandlerStub{}
 		gigHandler := &gigHandlerStub{}
 		orderHandler := &orderHandlerStub{}
 		reviewHandler := &reviewHandlerStub{}
 		searchHandler := &searchHandlerStub{}
 		onboardingHandler := &onboardingHandlerStub{}
-		InvokeRegisterHTTPV1Routes(srv, handler, userHandler, userOrderHandler, gigHandler, orderHandler, reviewHandler, searchHandler, onboardingHandler)
+		InvokeRegisterHTTPV1Routes(srv, handler, userHandler, userOrderHandler, chatHandler, gigHandler, orderHandler, reviewHandler, searchHandler, onboardingHandler)
 
 		Expect(handler.registered).To(BeTrue())
 		Expect(userHandler.registered).To(BeTrue())
 		Expect(userOrderHandler.registered).To(BeTrue())
+		Expect(chatHandler.registered).To(BeTrue())
 		Expect(gigHandler.registered).To(BeTrue())
 		Expect(orderHandler.registered).To(BeTrue())
 		Expect(reviewHandler.registered).To(BeTrue())
