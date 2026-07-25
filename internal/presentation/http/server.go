@@ -4,7 +4,9 @@ import (
 	"api-gateway/config"
 	"context"
 	"fmt"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -22,6 +24,8 @@ func NewServer(cfg config.HTTPConfig, log logging.Logger) (Server, error) {
 	}
 
 	app := fiber.New()
+	app.Use(tracingMiddleware())
+	app.Use(metricsMiddleware)
 	srv := &server{
 		app: app,
 		cfg: cfg,
@@ -29,6 +33,20 @@ func NewServer(cfg config.HTTPConfig, log logging.Logger) (Server, error) {
 	}
 
 	return srv, nil
+}
+
+func metricsMiddleware(c *fiber.Ctx) error {
+	meter := metrics.Global()
+	meter.IncHTTPInFlight()
+	started := time.Now()
+	err := c.Next()
+	route := c.Route().Path
+	if route == "" {
+		route = "unknown"
+	}
+	meter.ObserveHTTP(c.Method(), route, metrics.HTTPStatusClass(c.Response().StatusCode()), time.Since(started), len(c.Body()), len(c.Response().Body()))
+	meter.DecHTTPInFlight()
+	return err
 }
 
 // App returns the underlying Fiber application for route registration.

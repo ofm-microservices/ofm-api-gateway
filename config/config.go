@@ -9,7 +9,20 @@ import (
 type Config struct {
 	App              AppConfig
 	HTTP             HTTPConfig
+	Metrics          MetricsConfig
+	Tracing          TracingConfig
+	JWT              JWTConfig
+	NATS             NATSConfig
 	RegistrationSaga RegistrationSagaConfig
+	OrderSaga        OrderSagaConfig
+	OrderService     OrderServiceConfig
+	ReviewService    ReviewServiceConfig
+	UserService      UserServiceConfig
+	SearchService    SearchServiceConfig
+	AuthService      AuthServiceConfig
+	GigService       GigServiceConfig
+	PaymentService   PaymentServiceConfig
+	ChatService      ChatServiceConfig
 }
 
 // Load reads environment variables into Config and applies defaults.

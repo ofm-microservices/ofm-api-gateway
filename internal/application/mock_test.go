@@ -56,6 +56,89 @@ func (mr *MockRegistrationPublisherMockRecorder) StartRegistration(ctx, req any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartRegistration", reflect.TypeOf((*MockRegistrationPublisher)(nil).StartRegistration), ctx, req)
 }
 
+// VerifyEmail mocks base method.
+func (m *MockRegistrationPublisher) VerifyEmail(ctx context.Context, req domain.VerifyEmailRequest) (*domain.VerifyEmailResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyEmail", ctx, req)
+	ret0, _ := ret[0].(*domain.VerifyEmailResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VerifyEmail indicates an expected call of VerifyEmail.
+func (mr *MockRegistrationPublisherMockRecorder) VerifyEmail(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmail", reflect.TypeOf((*MockRegistrationPublisher)(nil).VerifyEmail), ctx, req)
+}
+
+// GetRegistrationStatus mocks base method.
+func (m *MockRegistrationPublisher) GetRegistrationStatus(ctx context.Context, sessionID, clientID string) (*domain.RegistrationStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRegistrationStatus", ctx, sessionID, clientID)
+	ret0, _ := ret[0].(*domain.RegistrationStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRegistrationStatus indicates an expected call of GetRegistrationStatus.
+func (mr *MockRegistrationPublisherMockRecorder) GetRegistrationStatus(ctx, sessionID, clientID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegistrationStatus", reflect.TypeOf((*MockRegistrationPublisher)(nil).GetRegistrationStatus), ctx, sessionID, clientID)
+}
+
+// MockTokenIssuer is a mock of TokenIssuer interface.
+type MockTokenIssuer struct {
+	ctrl     *gomock.Controller
+	recorder *MockTokenIssuerMockRecorder
+	isgomock struct{}
+}
+
+// MockTokenIssuerMockRecorder is the mock recorder for MockTokenIssuer.
+type MockTokenIssuerMockRecorder struct {
+	mock *MockTokenIssuer
+}
+
+// NewMockTokenIssuer creates a new mock instance.
+func NewMockTokenIssuer(ctrl *gomock.Controller) *MockTokenIssuer {
+	mock := &MockTokenIssuer{ctrl: ctrl}
+	mock.recorder = &MockTokenIssuerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTokenIssuer) EXPECT() *MockTokenIssuerMockRecorder {
+	return m.recorder
+}
+
+// IssueRegistrationTokens mocks base method.
+func (m *MockTokenIssuer) IssueRegistrationTokens(ctx context.Context, userID string) (*domain.CompleteRegistrationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IssueRegistrationTokens", ctx, userID)
+	ret0, _ := ret[0].(*domain.CompleteRegistrationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IssueRegistrationTokens indicates an expected call of IssueRegistrationTokens.
+func (mr *MockTokenIssuerMockRecorder) IssueRegistrationTokens(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueRegistrationTokens", reflect.TypeOf((*MockTokenIssuer)(nil).IssueRegistrationTokens), ctx, userID)
+}
+
+// Close mocks base method.
+func (m *MockTokenIssuer) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockTokenIssuerMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockTokenIssuer)(nil).Close))
+}
+
 // MockRegistrationService is a mock of RegistrationService interface.
 type MockRegistrationService struct {
 	ctrl     *gomock.Controller

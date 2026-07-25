@@ -3,28 +3,45 @@ package http
 import (
 	gateway "api-gateway/internal/domain"
 	"errors"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type authHandler struct {
-	service RegistrationService
-	log     logging.Logger
+	registration RegistrationService
+	session      AuthSessionService
+	me           AuthMeService
+	auth         GigPrincipalResolver
+	log          logging.Logger
 }
 
 // NewAuthHandler constructs the auth HTTP handler group for signup requests.
-func NewAuthHandler(service RegistrationService, log logging.Logger) (AuthHandler, error) {
-	if service == nil {
+func NewAuthHandler(registration RegistrationService, session AuthSessionService, me AuthMeService, jwtSecret string, log logging.Logger) (AuthHandler, error) {
+	if registration == nil {
 		return nil, ErrNilRegistrationService
+	}
+	if session == nil {
+		return nil, ErrNilAuthSessionService
+	}
+	if me == nil {
+		return nil, ErrNilAuthMeService
 	}
 	if log == nil {
 		return nil, ErrNilLogger
 	}
+	auth, err := newJWTPrincipalResolver(jwtSecret, log)
+	if err != nil {
+		return nil, err
+	}
 
 	return &authHandler{
-		service: service,
-		log:     log.With(logging.String("module", "http-auth-handler")),
+		registration: registration,
+		session:      session,
+		me:           me,
+		auth:         auth,
+		log:          log.With(logging.String("module", "http-auth-handler")),
 	}, nil
 }
 
@@ -33,29 +50,179 @@ func (h *authHandler) RegisterRoutes(router fiber.Router) {
 	auth := router.Group("/auth")
 
 	auth.Post("/sign-up", h.HandleSignUp)
+	auth.Post("/sign-in", h.HandleSignIn)
+	auth.Post("/refresh", h.HandleRefresh)
+	auth.Post("/sign-out", h.HandleSignOut)
+	auth.Get("/me", h.auth.Middleware(), h.HandleMe)
+	auth.Post("/sign-up/verify-email", h.HandleVerifyEmail)
+	auth.Post("/sign-up/complete", h.HandleCompleteRegistration)
 }
 
 // HandleSignUp parses the public signup payload and starts registration.
 func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
 	var req gateway.SignUpRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
 	}
 
-	result, err := h.service.SignUp(c.UserContext(), req)
+	result, err := h.registration.SignUp(c.UserContext(), req)
 	if err != nil {
 		return h.MapSignUpError(c, err)
 	}
 
-	h.log.Info("sign up request accepted")
+	log.Info("sign up request accepted",
+		logging.Operation("http.auth.sign_up"),
+		logging.DurationMS(time.Since(started)),
+	)
 
 	return c.Status(fiber.StatusAccepted).JSON(result)
 }
 
+// HandleVerifyEmail accepts an email verification code and returns immediately
+// after the saga accepts the command.
+func (h *authHandler) HandleVerifyEmail(c *fiber.Ctx) error {
+	started := time.Now()
+	var req gateway.VerifyEmailRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.registration.VerifyEmail(c.UserContext(), req)
+	if err != nil {
+		return h.MapSignUpError(c, err)
+	}
+
+	logging.WithContext(c.UserContext(), h.log).Info("verify email request accepted",
+		logging.Operation("http.auth.verify_email"),
+		logging.DurationMS(time.Since(started)),
+	)
+	return c.Status(fiber.StatusAccepted).JSON(result)
+}
+
+// HandleCompleteRegistration exchanges a completed registration saga for
+// auth-owned tokens.
+func (h *authHandler) HandleCompleteRegistration(c *fiber.Ctx) error {
+	started := time.Now()
+	var req gateway.CompleteRegistrationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.registration.CompleteRegistration(c.UserContext(), req)
+	if err != nil {
+		return h.MapSignUpError(c, err)
+	}
+
+	logging.WithContext(c.UserContext(), h.log).Info("complete registration request accepted",
+		logging.Operation("http.auth.complete_registration"),
+		logging.DurationMS(time.Since(started)),
+	)
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleSignIn parses credentials and relays the auth-session sign-in result.
+func (h *authHandler) HandleSignIn(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+	var req gateway.SignInRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.session.SignIn(c.UserContext(), req)
+	if err != nil {
+		return h.MapSignInError(c, err)
+	}
+
+	log.Info("sign in request accepted",
+		logging.Operation("http.auth.sign_in"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("identifier", req.Identifier),
+	)
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleRefresh rotates a refresh token and relays the new token pair.
+func (h *authHandler) HandleRefresh(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+	var req gateway.RefreshTokensRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	result, err := h.session.Refresh(c.UserContext(), req)
+	if err != nil {
+		return h.MapRefreshError(c, err)
+	}
+
+	log.Info("refresh request accepted",
+		logging.Operation("http.auth.refresh"),
+		logging.DurationMS(time.Since(started)),
+	)
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleSignOut revokes the presented refresh token and ends the session.
+func (h *authHandler) HandleSignOut(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+	var req gateway.SignOutRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+
+	if err := h.session.SignOut(c.UserContext(), req); err != nil {
+		return h.MapSignOutError(c, err)
+	}
+
+	log.Info("sign out request accepted",
+		logging.Operation("http.auth.sign_out"),
+		logging.DurationMS(time.Since(started)),
+	)
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// HandleMe validates the bearer token and returns the authenticated user's preview profile.
+func (h *authHandler) HandleMe(c *fiber.Ctx) error {
+	started := time.Now()
+	log := logging.WithContext(c.UserContext(), h.log)
+	userID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	user, err := h.me.GetMe(c.UserContext(), userID)
+	if err != nil {
+		switch err {
+		case gateway.ErrUserNotFound:
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
+		case gateway.ErrInvalidUserID:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+		default:
+			log.Error("request failed",
+				logging.Operation("http.auth.me_error"),
+				logging.Attempt(1),
+				logging.Retryable(false),
+				logging.Err(err),
+			)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+		}
+	}
+
+	log.Info("me request accepted",
+		logging.Operation("http.auth.me"),
+		logging.DurationMS(time.Since(started)),
+		logging.String("user_id", userID),
+	)
+	return c.Status(fiber.StatusOK).JSON(user)
+}
+
 // MapSignUpError translates signup failures into stable HTTP responses.
 func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
+	log := logging.WithContext(c.UserContext(), h.log)
 	var conflictErr *gateway.RegistrationConflictError
 
 	switch err {
@@ -65,6 +232,16 @@ func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid password"})
 	case gateway.ErrInvalidUsername:
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid username"})
+	case gateway.ErrInvalidSessionID:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid session id"})
+	case gateway.ErrInvalidClientID:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid client id"})
+	case gateway.ErrInvalidVerificationCode:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid verification code"})
+	case gateway.ErrRegistrationNotCompleted:
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "registration is not completed"})
+	case gateway.ErrRegistrationAlreadyClaimed:
+		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "registration tokens already claimed"})
 	default:
 		if errors.As(err, &conflictErr) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
@@ -74,7 +251,71 @@ func (h *authHandler) MapSignUpError(c *fiber.Ctx, err error) error {
 				"email_taken":    conflictErr.EmailTaken,
 			})
 		}
-		h.log.Error("request failed", logging.Err(err))
+		log.Error("request failed",
+			logging.Operation("http.auth.signup_error"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+}
+
+// MapSignInError translates sign-in failures into stable HTTP responses.
+func (h *authHandler) MapSignInError(c *fiber.Ctx, err error) error {
+	log := logging.WithContext(c.UserContext(), h.log)
+	switch err {
+	case gateway.ErrInvalidIdentifier:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid identifier"})
+	case gateway.ErrInvalidPassword:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid password"})
+	case gateway.ErrInvalidCredentials:
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
+	default:
+		log.Error("request failed",
+			logging.Operation("http.auth.sign_in_error"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+}
+
+// MapRefreshError translates refresh failures into stable HTTP responses.
+func (h *authHandler) MapRefreshError(c *fiber.Ctx, err error) error {
+	log := logging.WithContext(c.UserContext(), h.log)
+	switch err {
+	case gateway.ErrInvalidRefreshToken:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid refresh token"})
+	case gateway.ErrInvalidCredentials:
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid refresh token"})
+	default:
+		log.Error("request failed",
+			logging.Operation("http.auth.refresh_error"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+}
+
+// MapSignOutError translates sign-out failures into stable HTTP responses.
+func (h *authHandler) MapSignOutError(c *fiber.Ctx, err error) error {
+	log := logging.WithContext(c.UserContext(), h.log)
+	switch err {
+	case gateway.ErrInvalidRefreshToken:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid refresh token"})
+	case gateway.ErrInvalidCredentials:
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid refresh token"})
+	default:
+		log.Error("request failed",
+			logging.Operation("http.auth.sign_out_error"),
+			logging.Attempt(1),
+			logging.Retryable(false),
+			logging.Err(err),
+		)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
 	}
 }

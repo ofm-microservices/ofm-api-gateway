@@ -18,6 +18,8 @@ func main() {
 	app := newApp(
 		appfx.ConfigModule,
 		appfx.LoggerModule,
+		appfx.TracingModule,
+		appfx.MetricsModule,
 		appfx.AppModule,
 		appfx.MessagingModule,
 		appfx.ServiceModule,

@@ -4,12 +4,22 @@ import (
 	"api-gateway/config"
 	gateway "api-gateway/internal/domain"
 	"context"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
-	registrationv1 "github.com/ofm-microseervices/ofm-common/proto/registration/v1"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	authv1 "github.com/ofm-microservices/ofm-common/proto/auth/v1"
+	chatv1 "github.com/ofm-microservices/ofm-common/proto/chat/v1"
+	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
+	ordercheckoutv1 "github.com/ofm-microservices/ofm-common/proto/ordercheckout/v1"
+	orderwritev1 "github.com/ofm-microservices/ofm-common/proto/orderwrite/v1"
+	paymentconnectv1 "github.com/ofm-microservices/ofm-common/proto/paymentconnect/v1"
+	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
+	reviewv1 "github.com/ofm-microservices/ofm-common/proto/review/v1"
+	searchv1 "github.com/ofm-microservices/ofm-common/proto/search/v1"
+	userv1 "github.com/ofm-microservices/ofm-common/proto/user/v1"
 )
 
 // Logger aliases the shared logger contract used by the gRPC adapter.
 type Logger = logging.Logger
+type ChatServiceConfig = config.ChatServiceConfig
 
 // SignUpRequest aliases the gateway-domain signup request transported over gRPC.
 type SignUpRequest = gateway.SignUpRequest
@@ -17,9 +27,127 @@ type SignUpRequest = gateway.SignUpRequest
 // SignUpResult aliases the gateway-domain signup result returned from the saga.
 type SignUpResult = gateway.SignUpResult
 
+// VerifyEmailRequest aliases the gateway-domain verification command.
+type VerifyEmailRequest = gateway.VerifyEmailRequest
+
+// VerifyEmailResult aliases the gateway-domain verification result.
+type VerifyEmailResult = gateway.VerifyEmailResult
+
+// AuthTokensResult aliases the gateway-domain token result used by both auth
+// flows.
+type AuthTokensResult = gateway.AuthTokensResult
+
+// CompleteRegistrationResult is retained as a compatibility alias for older
+// registration-only code paths.
+type CompleteRegistrationResult = gateway.CompleteRegistrationResult
+
 // Client is the gateway-facing gRPC adapter for registration-saga-service.
 type Client interface {
 	StartRegistration(ctx context.Context, req SignUpRequest) (*SignUpResult, error)
+	VerifyEmail(ctx context.Context, req VerifyEmailRequest) (*VerifyEmailResult, error)
+	GetRegistrationStatus(ctx context.Context, sessionID, clientID string) (*gateway.RegistrationStatus, error)
+	Close() error
+}
+
+// AuthClient is the gateway-facing gRPC adapter for auth-service token issuing.
+type AuthClient interface {
+	IssueRegistrationTokens(ctx context.Context, userID string) (*CompleteRegistrationResult, error)
+	Close() error
+}
+
+// AuthSessionClient is the gateway-facing gRPC adapter for sign-in.
+type AuthSessionClient interface {
+	SignIn(ctx context.Context, req gateway.SignInRequest) (*AuthTokensResult, error)
+	Refresh(ctx context.Context, req gateway.RefreshTokensRequest) (*AuthTokensResult, error)
+	SignOut(ctx context.Context, req gateway.SignOutRequest) error
+	Close() error
+}
+
+// GigClient is the gateway-facing gRPC adapter for gig-service draft and
+// publish workflows.
+type GigClient interface {
+	CreateDraft(ctx context.Context, req gateway.CreateGigDraftRequest) (*gateway.Gig, error)
+	UpdateBasicInfo(ctx context.Context, req gateway.UpdateGigBasicInfoRequest) (*gateway.Gig, error)
+	ReplacePackages(ctx context.Context, req gateway.ReplaceGigPackagesRequest) (*gateway.Gig, error)
+	ReplaceQuestions(ctx context.Context, req gateway.ReplaceGigQuestionsRequest) (*gateway.Gig, error)
+	ReplaceMedia(ctx context.Context, req gateway.ReplaceGigMediaRequest) (*gateway.Gig, error)
+	GetDraft(ctx context.Context, req gateway.GetGigDraftRequest) (*gateway.Gig, error)
+	GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequest) (*gateway.Gig, error)
+	GetPreviewGigsByFreelancerUsername(ctx context.Context, req gateway.GetPreviewGigsByFreelancerUsernameRequest) (*gateway.GigPreviewList, error)
+	GetMyGigs(ctx context.Context, req gateway.GetMyGigsRequest) (*gateway.GigPreviewPage, error)
+	Publish(ctx context.Context, req gateway.PublishGigRequest) (*gateway.Gig, error)
+	Close() error
+}
+
+// PaymentOnboardingClient is the gateway-facing gRPC adapter for freelancer
+// Stripe onboarding.
+type PaymentOnboardingClient interface {
+	StartFreelancerOnboarding(ctx context.Context, req gateway.StartFreelancerOnboardingRequest) (*gateway.StartFreelancerOnboardingResult, error)
+	Close() error
+}
+
+// OrderCheckoutClient is the gateway-facing gRPC adapter for the hybrid order
+// checkout flow.
+type OrderCheckoutClient interface {
+	StartOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error)
+	ConfirmOrder(ctx context.Context, req gateway.ConfirmOrderRequest) (*gateway.ConfirmOrderResult, error)
+	SubmitRequirements(ctx context.Context, req gateway.SubmitOrderRequirementsRequest) (*gateway.SubmitOrderRequirementsResult, error)
+	SubmitMessage(ctx context.Context, req gateway.SubmitOrderMessageRequest) (*gateway.SubmitOrderMessageResult, error)
+	CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateOrderAttachmentUploadURLRequest) (*gateway.CreateOrderAttachmentUploadURLResult, error)
+	CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteOrderAttachmentUploadRequest) (*gateway.CompleteOrderAttachmentUploadResult, error)
+	DeliverOrder(ctx context.Context, req gateway.DeliverOrderRequest) (*gateway.DeliverOrderResult, error)
+	AcceptDelivery(ctx context.Context, req gateway.AcceptDeliveryRequest) (*gateway.AcceptDeliveryResult, error)
+	RequestRevision(ctx context.Context, req gateway.RequestRevisionRequest) (*gateway.RequestRevisionResult, error)
+	OpenDispute(ctx context.Context, req gateway.OpenDisputeRequest) (*gateway.OpenDisputeResult, error)
+	ResolveDispute(ctx context.Context, req gateway.ResolveDisputeRequest) (*gateway.ResolveDisputeResult, error)
+	Close() error
+}
+
+// OrderPreviewClient is the gateway-facing gRPC adapter for user-scoped order previews.
+type OrderPreviewClient interface {
+	GetOrderPreviewByID(ctx context.Context, req gateway.GetOrderPreviewByIDRequest) (*gateway.GetOrderPreviewByIDResult, error)
+	GetOrderRequirementsByID(ctx context.Context, req gateway.GetOrderRequirementsByIDRequest) (*gateway.GetOrderRequirementsByIDResult, error)
+	GetOrderDeliveryByID(ctx context.Context, req gateway.GetOrderDeliveryByIDRequest) (*gateway.GetOrderDeliveryByIDResult, error)
+	Close() error
+}
+
+// ChatClient is the gateway-facing gRPC adapter for chat-service.
+type ChatClient interface {
+	GetOrderChat(ctx context.Context, req gateway.GetOrderChatRequest) (*gateway.GetOrderChatResult, error)
+	CreateMessage(ctx context.Context, req gateway.CreateChatMessageRequest) (*gateway.ChatMessage, error)
+	EditMessage(ctx context.Context, req gateway.EditChatMessageRequest) (*gateway.ChatMessage, error)
+	DeleteMessage(ctx context.Context, req gateway.DeleteChatMessageRequest) (*gateway.ChatMessage, error)
+	CreateAttachmentUploadURL(ctx context.Context, req gateway.CreateChatAttachmentUploadURLRequest) (*gateway.CreateChatAttachmentUploadURLResult, error)
+	CompleteAttachmentUpload(ctx context.Context, req gateway.CompleteChatAttachmentUploadRequest) (*gateway.ChatAttachment, error)
+	Close() error
+}
+
+// PaymentByOrderClient is the gateway-facing gRPC adapter for order-keyed payment snapshots.
+type PaymentByOrderClient interface {
+	GetPaymentByOrderId(ctx context.Context, orderID string) (*gateway.OrderPreviewPayment, error)
+	Close() error
+}
+
+// ReviewClient is the gateway-facing gRPC adapter for review-service.
+type ReviewClient interface {
+	CreateReview(ctx context.Context, req gateway.CreateReviewRequest) (*gateway.CreateReviewResult, error)
+	GetGigReviews(ctx context.Context, req gateway.GetGigReviewsRequest) (*gateway.GetGigReviewsResult, error)
+	GetReviewsBySellerUsername(ctx context.Context, req gateway.GetReviewsBySellerUsernameRequest) (*gateway.GetReviewsBySellerUsernameResult, error)
+	GetGigReviewsSummary(ctx context.Context, req gateway.GetGigReviewsSummaryRequest) (*gateway.ReviewSummary, error)
+	GetUserRatingSummaryByUsername(ctx context.Context, req gateway.GetUserRatingSummaryByUsernameRequest) (*gateway.ReviewSummary, error)
+	Close() error
+}
+
+// UserClient is the gateway-facing gRPC adapter for user-service.
+type UserClient interface {
+	GetUserPreviewByID(ctx context.Context, userID string) (*gateway.User, error)
+	GetDetailedUserByUsername(ctx context.Context, username string) (*gateway.User, error)
+	Close() error
+}
+
+// SearchClient is the gateway-facing gRPC adapter for search-service.
+type SearchClient interface {
+	Search(ctx context.Context, req gateway.SearchRequest) (*gateway.SearchResponse, error)
 	Close() error
 }
 
@@ -28,8 +156,174 @@ type Client interface {
 type RegistrationMapper interface {
 	ToStartRegistrationRequest(req SignUpRequest) *registrationv1.StartRegistrationRequest
 	ToSignUpResult(res *registrationv1.StartRegistrationResponse) *SignUpResult
+	ToVerifyEmailRequest(req VerifyEmailRequest) *registrationv1.VerifyEmailRequest
+	ToVerifyEmailResult(res *registrationv1.VerifyEmailResponse) *VerifyEmailResult
+	ToRegistrationStatus(res *registrationv1.GetRegistrationStatusResponse) *gateway.RegistrationStatus
+	ToCompleteRegistrationResult(res *authv1.IssueRegistrationTokensResponse) *AuthTokensResult
 	ToStartRegistrationError(err error) error
+	ToRegistrationStatusError(err error) error
 }
+
+// AuthSessionMapper translates between gateway sign-in types and the shared
+// auth-session gRPC contract.
+type AuthSessionMapper interface {
+	ToSignInRequest(req gateway.SignInRequest) *authv1.SignInRequest
+	ToRefreshRequest(req gateway.RefreshTokensRequest) *authv1.RefreshRequest
+	ToSignOutRequest(req gateway.SignOutRequest) *authv1.SignOutRequest
+	ToSignInResult(res *authv1.SignInResponse) *AuthTokensResult
+	ToRefreshResult(res *authv1.RefreshResponse) *AuthTokensResult
+	ToError(err error) error
+	ToRefreshError(err error) error
+	ToSignOutError(err error) error
+}
+
+// GigMapper translates between gateway gig types and the shared gig gRPC
+// contract.
+type GigMapper interface {
+	ToCreateDraftRequest(req gateway.CreateGigDraftRequest) *gigv1.CreateDraftRequest
+	ToCreateDraftResponse(res *gigv1.CreateDraftResponse) *gateway.Gig
+	ToUpdateBasicInfoRequest(req gateway.UpdateGigBasicInfoRequest) *gigv1.UpdateBasicInfoRequest
+	ToUpdateBasicInfoResponse(res *gigv1.UpdateBasicInfoResponse) *gateway.Gig
+	ToReplacePackagesRequest(req gateway.ReplaceGigPackagesRequest) *gigv1.ReplacePackagesRequest
+	ToReplacePackagesResponse(res *gigv1.ReplacePackagesResponse) *gateway.Gig
+	ToReplaceQuestionsRequest(req gateway.ReplaceGigQuestionsRequest) *gigv1.ReplaceQuestionsRequest
+	ToReplaceQuestionsResponse(res *gigv1.ReplaceQuestionsResponse) *gateway.Gig
+	ToReplaceMediaRequest(req gateway.ReplaceGigMediaRequest) *gigv1.ReplaceMediaRequest
+	ToReplaceMediaResponse(res *gigv1.ReplaceMediaResponse) *gateway.Gig
+	ToPublishRequest(req gateway.PublishGigRequest) *gigv1.PublishRequest
+	ToPublishResponse(res *gigv1.PublishResponse) *gateway.Gig
+	ToGetDraftRequest(req gateway.GetGigDraftRequest) *gigv1.GetDraftRequest
+	ToGetDraftResponse(res *gigv1.GetDraftResponse) *gateway.Gig
+	ToGetBySlugRequest(req gateway.GetGigBySlugRequest) *gigv1.GetGigBySlugRequest
+	ToGetBySlugResponse(res *gigv1.GetGigBySlugResponse) *gateway.Gig
+	ToGetPreviewGigsByFreelancerUsernameRequest(req gateway.GetPreviewGigsByFreelancerUsernameRequest) *gigv1.GetPreviewGigsByFreelancerUsernameRequest
+	ToGetPreviewGigsByFreelancerUsernameResponse(res *gigv1.GetPreviewGigsByFreelancerUsernameResponse) *gateway.GigPreviewList
+	ToGetMyGigsRequest(req gateway.GetMyGigsRequest) *gigv1.GetMyGigsRequest
+	ToGetMyGigsResponse(res *gigv1.GetMyGigsResponse) *gateway.GigPreviewPage
+	ToError(err error) error
+}
+
+// PaymentOnboardingMapper translates between gateway onboarding types and the
+// shared payment onboarding gRPC contract.
+type PaymentOnboardingMapper interface {
+	ToStartFreelancerOnboardingRequest(req gateway.StartFreelancerOnboardingRequest) *paymentconnectv1.StartFreelancerOnboardingRequest
+	ToStartFreelancerOnboardingResponse(res *paymentconnectv1.StartFreelancerOnboardingResponse) *gateway.StartFreelancerOnboardingResult
+	ToError(err error) error
+}
+
+// OrderCheckoutMapper translates between gateway order types and the shared
+// order checkout gRPC contract.
+type OrderCheckoutMapper interface {
+	ToStartOrderRequest(req gateway.CreateOrderRequest) *ordercheckoutv1.StartOrderRequest
+	ToStartOrderResponse(res *ordercheckoutv1.StartOrderResponse) *gateway.CreateOrderResult
+	ToConfirmOrderRequest(req gateway.ConfirmOrderRequest) *ordercheckoutv1.ConfirmOrderRequest
+	ToConfirmOrderResponse(res *ordercheckoutv1.ConfirmOrderResponse) *gateway.ConfirmOrderResult
+	ToSubmitRequirementsRequest(req gateway.SubmitOrderRequirementsRequest) *ordercheckoutv1.SubmitRequirementsRequest
+	ToSubmitRequirementsResponse(res *ordercheckoutv1.SubmitRequirementsResponse) *gateway.SubmitOrderRequirementsResult
+	ToSubmitMessageRequest(req gateway.SubmitOrderMessageRequest) *ordercheckoutv1.SubmitMessageRequest
+	ToSubmitMessageResponse(res *ordercheckoutv1.SubmitMessageResponse) *gateway.SubmitOrderMessageResult
+	ToCreateAttachmentUploadURLRequest(req gateway.CreateOrderAttachmentUploadURLRequest) *ordercheckoutv1.CreateAttachmentUploadURLRequest
+	ToCreateAttachmentUploadURLResponse(res *ordercheckoutv1.CreateAttachmentUploadURLResponse) *gateway.CreateOrderAttachmentUploadURLResult
+	ToCompleteAttachmentUploadRequest(req gateway.CompleteOrderAttachmentUploadRequest) *ordercheckoutv1.CompleteAttachmentUploadRequest
+	ToCompleteAttachmentUploadResponse(res *ordercheckoutv1.CompleteAttachmentUploadResponse) *gateway.CompleteOrderAttachmentUploadResult
+	ToDeliverOrderRequest(req gateway.DeliverOrderRequest) *ordercheckoutv1.DeliverOrderRequest
+	ToDeliverOrderResponse(res *ordercheckoutv1.DeliverOrderResponse) *gateway.DeliverOrderResult
+	ToAcceptDeliveryRequest(req gateway.AcceptDeliveryRequest) *ordercheckoutv1.AcceptDeliveryRequest
+	ToAcceptDeliveryResponse(res *ordercheckoutv1.AcceptDeliveryResponse) *gateway.AcceptDeliveryResult
+	ToRequestRevisionRequest(req gateway.RequestRevisionRequest) *ordercheckoutv1.RequestRevisionRequest
+	ToRequestRevisionResponse(res *ordercheckoutv1.RequestRevisionResponse) *gateway.RequestRevisionResult
+	ToOpenDisputeRequest(req gateway.OpenDisputeRequest) *ordercheckoutv1.OpenDisputeRequest
+	ToOpenDisputeResponse(res *ordercheckoutv1.OpenDisputeResponse) *gateway.OpenDisputeResult
+	ToResolveDisputeRequest(req gateway.ResolveDisputeRequest) *ordercheckoutv1.ResolveDisputeRequest
+	ToResolveDisputeResponse(res *ordercheckoutv1.ResolveDisputeResponse) *gateway.ResolveDisputeResult
+	ToError(err error) error
+}
+
+// OrderPreviewMapper translates between gateway order preview types and the
+// shared order write gRPC contract.
+type OrderPreviewMapper interface {
+	ToGetOrderPreviewByIDRequest(req gateway.GetOrderPreviewByIDRequest) *orderwritev1.GetOrderPreviewByIDRequest
+	ToGetOrderPreviewByIDResponse(res *orderwritev1.GetOrderPreviewByIDResponse) *gateway.GetOrderPreviewByIDResult
+	ToGetOrderRequirementsByIDRequest(req gateway.GetOrderRequirementsByIDRequest) *orderwritev1.GetOrderRequirementsByIDRequest
+	ToGetOrderRequirementsByIDResponse(res *orderwritev1.GetOrderRequirementsByIDResponse) *gateway.GetOrderRequirementsByIDResult
+	ToGetOrderDeliveryByIDRequest(req gateway.GetOrderDeliveryByIDRequest) *orderwritev1.GetOrderDeliveryByIDRequest
+	ToGetOrderDeliveryByIDResponse(res *orderwritev1.GetOrderDeliveryByIDResponse) *gateway.GetOrderDeliveryByIDResult
+	ToError(err error) error
+}
+
+// ChatMapper translates between gateway chat types and the shared chat gRPC contract.
+type ChatMapper interface {
+	ToGetOrderChatRequest(req gateway.GetOrderChatRequest) *chatv1.GetOrderChatRequest
+	ToGetOrderChatResponse(res *chatv1.GetOrderChatResponse) *gateway.GetOrderChatResult
+	ToCreateMessageRequest(req gateway.CreateChatMessageRequest) *chatv1.CreateMessageRequest
+	ToCreateMessageResponse(res *chatv1.CreateMessageResponse) *gateway.ChatMessage
+	ToEditMessageRequest(req gateway.EditChatMessageRequest) *chatv1.EditMessageRequest
+	ToEditMessageResponse(res *chatv1.EditMessageResponse) *gateway.ChatMessage
+	ToDeleteMessageRequest(req gateway.DeleteChatMessageRequest) *chatv1.DeleteMessageRequest
+	ToDeleteMessageResponse(res *chatv1.DeleteMessageResponse) *gateway.ChatMessage
+	ToCreateAttachmentUploadURLRequest(req gateway.CreateChatAttachmentUploadURLRequest) *chatv1.CreateAttachmentUploadURLRequest
+	ToCreateAttachmentUploadURLResponse(res *chatv1.CreateAttachmentUploadURLResponse) *gateway.CreateChatAttachmentUploadURLResult
+	ToCompleteAttachmentUploadRequest(req gateway.CompleteChatAttachmentUploadRequest) *chatv1.CompleteAttachmentUploadRequest
+	ToCompleteAttachmentUploadResponse(res *chatv1.CompleteAttachmentUploadResponse) *gateway.ChatAttachment
+	ToError(err error) error
+}
+
+// ReviewMapper translates between gateway review types and the shared review
+// gRPC contract.
+type ReviewMapper interface {
+	ToCreateReviewRequest(req gateway.CreateReviewRequest, buyerID string) *reviewv1.CreateReviewRequest
+	ToCreateReviewResponse(res *reviewv1.CreateReviewResponse) *gateway.CreateReviewResult
+	ToGetGigReviewsRequest(req gateway.GetGigReviewsRequest) *reviewv1.ListGigReviewsRequest
+	ToGetGigReviewsResponse(res *reviewv1.ListGigReviewsResponse) *gateway.GetGigReviewsResult
+	ToGetReviewsBySellerUsernameRequest(req gateway.GetReviewsBySellerUsernameRequest) *reviewv1.GetReviewsBySellerUsernameRequest
+	ToGetReviewsBySellerUsernameResponse(res *reviewv1.ListSellerReviewsResponse) *gateway.GetReviewsBySellerUsernameResult
+	ToGetGigReviewsSummaryRequest(req gateway.GetGigReviewsSummaryRequest) *reviewv1.GetGigRatingSummaryRequest
+	ToGetGigReviewsSummaryResponse(res *reviewv1.RatingSummary) *gateway.ReviewSummary
+	ToGetUserRatingSummaryByUsernameRequest(req gateway.GetUserRatingSummaryByUsernameRequest) *reviewv1.GetUserRatingSummaryByUsernameRequest
+	ToGetUserRatingSummaryByUsernameResponse(res *reviewv1.RatingSummary) *gateway.ReviewSummary
+	ToError(err error) error
+}
+
+// SearchMapper translates between gateway search types and the shared search
+// gRPC contract.
+type SearchMapper interface {
+	ToSearchRequest(req gateway.SearchRequest) *searchv1.SearchRequest
+	ToSearchResponse(res *searchv1.SearchResponse) *gateway.SearchResponse
+}
+
+// UserMapper translates between gateway user types and the shared user gRPC
+// contract.
+type UserMapper interface {
+	ToGetUserPreviewRequest(userID string) *userv1.GetUserPreviewByIDRequest
+	ToGetUserPreviewResponse(res *userv1.GetUserPreviewByIDResponse) *gateway.User
+	ToGetDetailedUserRequest(username string) *userv1.GetDetailedUserByUsernameRequest
+	ToGetDetailedUserResponse(res *userv1.GetDetailedUserByUsernameResponse) *gateway.User
+	ToError(err error) error
+}
+
+// UserServiceConfig aliases the outbound user-service gRPC client configuration.
+type UserServiceConfig = config.UserServiceConfig
 
 // RegistrationSagaConfig aliases the outbound saga gRPC client configuration.
 type RegistrationSagaConfig = config.RegistrationSagaConfig
+
+// AuthServiceConfig aliases the outbound auth gRPC client configuration.
+type AuthServiceConfig = config.AuthServiceConfig
+
+// GigServiceConfig aliases the outbound gig gRPC client configuration.
+type GigServiceConfig = config.GigServiceConfig
+
+// PaymentServiceConfig aliases the outbound payment gRPC client configuration.
+type PaymentServiceConfig = config.PaymentServiceConfig
+
+// OrderSagaConfig aliases the outbound order-saga gRPC client configuration.
+type OrderSagaConfig = config.OrderSagaConfig
+
+// OrderServiceConfig aliases the outbound order-service gRPC client configuration.
+type OrderServiceConfig = config.OrderServiceConfig
+
+// ReviewServiceConfig aliases the outbound review-service gRPC client configuration.
+type ReviewServiceConfig = config.ReviewServiceConfig
+
+// SearchServiceConfig aliases the outbound search-service gRPC client configuration.
+type SearchServiceConfig = config.SearchServiceConfig

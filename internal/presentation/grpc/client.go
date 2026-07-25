@@ -1,10 +1,13 @@
 package grpc
 
 import (
+	gateway "api-gateway/internal/domain"
 	"context"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
-	registrationv1 "github.com/ofm-microseervices/ofm-common/proto/registration/v1"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
+	registrationv1 "github.com/ofm-microservices/ofm-common/proto/registration/v1"
 
+	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	grpcpkg "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -29,6 +32,8 @@ func NewClient(cfg RegistrationSagaConfig, log Logger) (Client, error) {
 	conn, err := grpcpkg.NewClient(
 		cfg.Address,
 		grpcpkg.WithTransportCredentials(insecure.NewCredentials()),
+		grpcpkg.WithStatsHandler(otelgrpc.NewClientHandler()),
+		grpcpkg.WithUnaryInterceptor(metrics.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		return nil, err
@@ -51,6 +56,29 @@ func (c *client) StartRegistration(ctx context.Context, req SignUpRequest) (*Sig
 	}
 
 	return c.mapr.ToSignUpResult(response), nil
+}
+
+// VerifyEmail forwards an email verification command to the registration saga.
+func (c *client) VerifyEmail(ctx context.Context, req VerifyEmailRequest) (*VerifyEmailResult, error) {
+	response, err := c.cl.VerifyEmail(ctx, c.mapr.ToVerifyEmailRequest(req))
+	if err != nil {
+		return nil, c.mapr.ToStartRegistrationError(err)
+	}
+
+	return c.mapr.ToVerifyEmailResult(response), nil
+}
+
+// GetRegistrationStatus reads the saga state before token completion.
+func (c *client) GetRegistrationStatus(ctx context.Context, sessionID, clientID string) (*gateway.RegistrationStatus, error) {
+	response, err := c.cl.GetRegistrationStatus(ctx, &registrationv1.GetRegistrationStatusRequest{
+		SessionId: sessionID,
+		ClientId:  clientID,
+	})
+	if err != nil {
+		return nil, c.mapr.ToRegistrationStatusError(err)
+	}
+
+	return c.mapr.ToRegistrationStatus(response), nil
 }
 
 // Close closes the underlying gRPC client connection.

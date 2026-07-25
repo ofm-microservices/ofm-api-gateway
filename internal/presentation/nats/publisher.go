@@ -5,7 +5,7 @@ import (
 	gateway "api-gateway/internal/domain"
 	"context"
 	"encoding/json"
-	"github.com/ofm-microseervices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/logging"
 	"time"
 
 	"github.com/nats-io/nats.go"
