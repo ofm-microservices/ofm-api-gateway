@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -45,6 +46,21 @@ func newJWTPrincipalResolver(secret string, log logging.Logger) (*jwtPrincipalRe
 
 func (r *jwtPrincipalResolver) Middleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		if c.Get("X-Recovery-Replay") == "true" && strings.TrimSpace(c.Get("Authorization")) == "" {
+			if principal := strings.TrimSpace(c.Get("X-Recovery-Principal-ID")); principal != "" {
+				c.Locals(jwtPrincipalLocalKey, principal)
+				// Recovery commands deliberately do not carry a user's bearer
+				// token through Kafka. Populate the same claims boundary used by
+				// handlers that only need actor identity; domain authorization
+				// still receives the explicit recovery principal.
+				c.Locals(jwtClaimsLocalKey, &commonjwt.Claims{
+					Subject:  principal,
+					Username: strings.TrimSpace(c.Get("X-Recovery-Username")),
+					Email:    strings.TrimSpace(c.Get("X-Recovery-Email")),
+				})
+				return c.Next()
+			}
+		}
 		claims, err := r.extractClaims(c.Get("Authorization"))
 		if err != nil {
 			r.log.Error("jwt authorization failed", logging.Err(err))
@@ -80,11 +96,11 @@ func (r *jwtPrincipalResolver) extractClaims(header string) (*commonjwt.Claims, 
 	if err != nil {
 		switch {
 		case errors.Is(err, commonjwt.ErrExpiredToken):
-			return nil, errExpiredJWTToken
+			return nil, fmt.Errorf("%w: %v", errExpiredJWTToken, err)
 		case errors.Is(err, commonjwt.ErrInvalidAuthorizationHeader):
-			return nil, errInvalidAuthorizationHeader
+			return nil, fmt.Errorf("%w: %v", errInvalidAuthorizationHeader, err)
 		default:
-			return nil, errInvalidJWTToken
+			return nil, fmt.Errorf("%w: %v", errInvalidJWTToken, err)
 		}
 	}
 	if strings.TrimSpace(claims.Subject) == "" {

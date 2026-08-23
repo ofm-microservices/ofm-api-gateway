@@ -38,9 +38,7 @@ func NewReviewHandler(service ReviewService, jwtSecret string, log logging.Logge
 }
 
 func (h *reviewHandler) RegisterRoutes(router fiber.Router) {
-	reviews := router.Group("")
-	reviews.Use(h.auth.Middleware())
-	reviews.Post("/orders/:order_id/reviews", h.HandleCreateReview)
+	router.Post("/orders/:order_id/reviews", h.auth.Middleware(), h.HandleCreateReview)
 }
 
 func (h *reviewHandler) HandleCreateReview(c *fiber.Ctx) error {
@@ -90,6 +88,8 @@ func (h *reviewHandler) mapReviewError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrReviewOwnerMismatch):
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	case errors.Is(err, gateway.ErrReviewNotFound):
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, gateway.ErrOrderNotAcceptable):
 		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{"error": err.Error()})
 	default:

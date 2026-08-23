@@ -2,6 +2,7 @@ package appfx
 
 import (
 	"api-gateway/config"
+	"api-gateway/internal/migration"
 	httpserver "api-gateway/internal/presentation/http"
 	"context"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
@@ -17,7 +18,17 @@ var HTTPModule = fx.Options(
 
 // ProvideHTTPServer constructs the HTTP server from gateway config.
 func ProvideHTTPServer(cfg *config.Config, lg logging.Logger) (httpserver.Server, error) {
-	return httpserver.NewServer(cfg.HTTP, lg)
+	if cfg.Monolith.BaseURL == "" {
+		return httpserver.NewServer(cfg.HTTP, lg)
+	}
+	if !cfg.Migration.WriteFallback {
+		return httpserver.NewServer(cfg.HTTP, lg)
+	}
+	fallback, err := migration.NewFallbackWriteClient(cfg.Monolith.BaseURL, cfg.Monolith.RateLimitBypassToken, cfg.Monolith.HTTPTimeout)
+	if err != nil {
+		return nil, err
+	}
+	return httpserver.NewServer(cfg.HTTP, lg, fallback)
 }
 
 // InvokeRunHTTPServer starts and stops the HTTP server with FX lifecycle hooks.

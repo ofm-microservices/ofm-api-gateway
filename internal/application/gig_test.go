@@ -605,7 +605,7 @@ var _ = Describe("GigService", func() {
 		Expect(err).To(MatchError(gateway.ErrGigNotFound))
 	})
 
-	It("returns the gig when user and review enrichment fails", func() {
+	It("returns the enrichment error instead of hiding it", func() {
 		svc, err := NewGig(pub, review, user, lg)
 		Expect(err).NotTo(HaveOccurred())
 		pub.slugRes = &gateway.Gig{
@@ -622,12 +622,7 @@ var _ = Describe("GigService", func() {
 			Username: "alex",
 			Slug:     "my-gig-019e706c-616e-7473-9c1a-838c33b75013",
 		})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(res).NotTo(BeNil())
-		Expect(res.Freelancer).To(BeNil())
-		Expect(res.Reviews).To(BeNil())
-		Expect(res.ReviewsSummary).To(BeNil())
-		Expect(res.Media).To(HaveLen(1))
-		Expect(res.Media[0].URL).To(Equal("https://example.com/media.jpg"))
+		Expect(res).To(BeNil())
+		Expect(err).To(MatchError("reviews down"))
 	})
 })

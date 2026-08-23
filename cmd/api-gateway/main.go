@@ -25,6 +25,8 @@ func main() {
 		appfx.ServiceModule,
 		appfx.HTTPModule,
 		appfx.HTTPV1Module,
+		appfx.MigrationModule,
+		appfx.HTTPV2Module,
 	)
 	app.Run()
 }

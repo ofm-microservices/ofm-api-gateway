@@ -47,9 +47,6 @@ LOG_LEVEL=info
 HTTP_HOST=0.0.0.0
 HTTP_PORT=8080
 
-NATS_URL=nats://127.0.0.1:4222
-NATS_USER=
-NATS_PASSWORD=
 REGISTRATION_SAGA_ADDRESS=127.0.0.1:9500
 ```
 
@@ -57,8 +54,8 @@ Notes:
 
 - `REGISTRATION_SAGA_ADDRESS` is the internal gRPC target for registration
   startup.
-- `NATS_*` remains in config because the gateway still has broker-related
-  plumbing and future transport integrations.
+- Registration and order startup use their owning services' gRPC boundaries;
+  the gateway does not connect to a message broker.
 
 ## Technologies
 

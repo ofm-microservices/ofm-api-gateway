@@ -3,9 +3,11 @@ package appfx
 import (
 	"api-gateway/config"
 	service "api-gateway/internal/application"
+	"api-gateway/internal/migration"
 	grpcclient "api-gateway/internal/presentation/grpc"
 	"context"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"strings"
 
 	"go.uber.org/fx"
 )
@@ -277,7 +279,11 @@ func ProvideSearchClient(
 	lc fx.Lifecycle,
 	cfg *config.Config,
 	lg logging.Logger,
+	legacy migration.LegacySearchClient,
 ) (service.SearchClient, error) {
+	if strings.EqualFold(cfg.Migration.SearchMode, "monolith") {
+		return legacy, nil
+	}
 	client, err := grpcclient.NewSearchClient(cfg.SearchService, lg)
 	if err != nil {
 		lg.Error("connect search service grpc failed", logging.Err(err))

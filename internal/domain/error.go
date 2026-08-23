@@ -102,6 +102,38 @@ var (
 	ErrInvalidCredentials           = errors.New("invalid credentials")
 )
 
+// IsBusinessError reports whether err represents an expected client-visible
+// domain outcome rather than an infrastructure or unknown failure.
+func IsBusinessError(err error) bool {
+	if err == nil {
+		return false
+	}
+	for _, candidate := range []error{
+		ErrInvalidEmail, ErrInvalidPassword, ErrInvalidUsername, ErrInvalidUserID,
+		ErrInvalidSessionID, ErrInvalidClientID, ErrInvalidIdentifier,
+		ErrInvalidRefreshToken, ErrInvalidVerificationCode, ErrInvalidGigID,
+		ErrInvalidGigSlug, ErrInvalidFreelancerID, ErrInvalidTitle,
+		ErrInvalidDescription, ErrInvalidCategoryID, ErrInvalidCurrency,
+		ErrInvalidOrderID, ErrInvalidOrderBuyerID, ErrInvalidOrderSellerID,
+		ErrInvalidOrderReason, ErrInvalidDisputeSplit, ErrInvalidReviewContent,
+		ErrUserNotFound, ErrReviewNotFound, ErrGigNotFound, ErrOrderNotFound,
+		ErrOrderRequirementsNotFound, ErrOrderDeliveryNotFound,
+		ErrOrderNotConfirmable, ErrOrderRequirementsIncomplete,
+		ErrOrderAlreadyPaymentPending, ErrOrderAlreadyFunded, ErrOrderNotDeliverable,
+		ErrOrderNotAcceptable, ErrOrderNotRevisionable, ErrOrderNotDisputable,
+		ErrOrderNotOwned, ErrChatNotFound, ErrChatMessageNotFound,
+		ErrChatClosed, ErrChatAccessDenied, ErrRegistrationNotCompleted,
+		ErrRegistrationAlreadyClaimed, ErrConnectOnboardingIncomplete,
+		ErrSelfOrderNotAllowed,
+	} {
+		if errors.Is(err, candidate) {
+			return true
+		}
+	}
+	var conflictErr *RegistrationConflictError
+	return errors.As(err, &conflictErr)
+}
+
 // RegistrationConflictError reports that registration cannot continue because
 // either an in-progress session already exists or the owned username/email is
 // already bound by the underlying services.

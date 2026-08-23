@@ -1,6 +1,7 @@
 package http
 
 import (
+	requestmetadata "github.com/ofm-microservices/ofm-common/pkg/observability/metadata"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -37,8 +38,15 @@ func tracingMiddleware() fiber.Handler {
 			trace.WithAttributes(
 				attribute.String("http.method", c.Method()),
 				attribute.String("http.target", c.Path()),
+				attribute.String("ofm.test_run_id", c.Get("X-Test-Run-ID")),
+				attribute.String("ofm.scenario_id", c.Get("X-Test-Scenario")),
+				attribute.String("ofm.fault_profile", c.Get("X-Fault-Profile")),
+				attribute.String("ofm.fault_target", c.Get("X-Fault-Target")),
 			),
 		)
+		ctx = requestmetadata.WithValues(ctx, requestmetadata.Values{
+			RequestID: c.Get("X-Request-ID"), CorrelationID: c.Get("X-Correlation-ID"), IdempotencyKey: c.Get("Idempotency-Key"), TestRunID: c.Get("X-Test-Run-ID"), TestScenarioID: c.Get("X-Test-Scenario"),
+		})
 		defer span.End()
 		c.SetUserContext(ctx)
 
