@@ -34,6 +34,7 @@ func Load() (*Config, error) {
 	if err := env.Parse(cfg); err != nil {
 		return nil, WrapParseEnvConfigError(err)
 	}
+	cfg.HTTP.JWTAccessSecret = cfg.JWT.AccessSecret
 
 	return cfg, nil
 }

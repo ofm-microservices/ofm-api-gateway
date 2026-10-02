@@ -288,6 +288,8 @@ func (h *gigHandler) HandlePublish(c *fiber.Ctx) error {
 
 func (h *gigHandler) mapGigError(c *fiber.Ctx, err error) error {
 	switch {
+	case errors.Is(err, gateway.ErrGigServiceUnavailable):
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "gig service temporarily unavailable"})
 	case errors.Is(err, gateway.ErrInvalidGigID),
 		errors.Is(err, gateway.ErrInvalidFreelancerID),
 		errors.Is(err, gateway.ErrInvalidTitle),

@@ -267,6 +267,10 @@ func (m *gigMapper) ToError(err error) error {
 	case gateway.ErrInvalidGigState.Error():
 		return gateway.ErrInvalidGigState
 	default:
+		switch st.Code() {
+		case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted:
+			return gateway.ErrGigServiceUnavailable
+		}
 		if st.Code() == codes.NotFound {
 			return gateway.ErrGigNotFound
 		}

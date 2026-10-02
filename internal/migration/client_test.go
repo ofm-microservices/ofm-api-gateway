@@ -11,7 +11,7 @@ import (
 )
 
 func TestLegacyRegistrationClientStart(t *testing.T) {
-	client, err := NewLegacyRegistrationClient("http://legacy.test", 0)
+	client, err := NewLegacyRegistrationClient("http://legacy.test", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestLegacyRegistrationClientStart(t *testing.T) {
 }
 
 func TestLegacyRegistrationClientRejectsNonSuccess(t *testing.T) {
-	client, err := NewLegacyRegistrationClient("http://legacy.test", 0)
+	client, err := NewLegacyRegistrationClient("http://legacy.test", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

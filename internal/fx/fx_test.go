@@ -257,15 +257,16 @@ func (h *orderHandlerStub) RegisterRoutes(router fiber.Router) {
 	})
 }
 
-func (h *orderHandlerStub) HandleCreateOrder(*fiber.Ctx) error        { return nil }
-func (h *orderHandlerStub) HandleConfirmOrder(*fiber.Ctx) error       { return nil }
-func (h *orderHandlerStub) HandleSubmitRequirements(*fiber.Ctx) error { return nil }
-func (h *orderHandlerStub) HandleSubmitMessage(*fiber.Ctx) error      { return nil }
-func (h *orderHandlerStub) HandleDeliverOrder(*fiber.Ctx) error       { return nil }
-func (h *orderHandlerStub) HandleAcceptDelivery(*fiber.Ctx) error     { return nil }
-func (h *orderHandlerStub) HandleRequestRevision(*fiber.Ctx) error    { return nil }
-func (h *orderHandlerStub) HandleOpenDispute(*fiber.Ctx) error        { return nil }
-func (h *orderHandlerStub) HandleResolveDispute(*fiber.Ctx) error     { return nil }
+func (h *orderHandlerStub) HandleCreateOrder(*fiber.Ctx) error                   { return nil }
+func (h *orderHandlerStub) HandleConfirmOrder(*fiber.Ctx) error                  { return nil }
+func (h *orderHandlerStub) HandleSubmitRequirements(*fiber.Ctx) error            { return nil }
+func (h *orderHandlerStub) HandleSubmitMessage(*fiber.Ctx) error                 { return nil }
+func (h *orderHandlerStub) HandleCompleteOrderAttachmentUpload(*fiber.Ctx) error { return nil }
+func (h *orderHandlerStub) HandleDeliverOrder(*fiber.Ctx) error                  { return nil }
+func (h *orderHandlerStub) HandleAcceptDelivery(*fiber.Ctx) error                { return nil }
+func (h *orderHandlerStub) HandleRequestRevision(*fiber.Ctx) error               { return nil }
+func (h *orderHandlerStub) HandleOpenDispute(*fiber.Ctx) error                   { return nil }
+func (h *orderHandlerStub) HandleResolveDispute(*fiber.Ctx) error                { return nil }
 
 type reviewHandlerStub struct {
 	registered bool

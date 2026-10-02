@@ -45,6 +45,7 @@ func (h *orderHandler) RegisterRoutes(router fiber.Router) {
 	orders.Post("/:order_id/confirm", h.HandleConfirmOrder)
 	orders.Post("/:order_id/requirements", h.HandleSubmitRequirements)
 	orders.Post("/:order_id/message", h.HandleSubmitMessage)
+	orders.Post("/:order_id/attachments/complete", h.HandleCompleteOrderAttachmentUpload)
 	orders.Post("/:order_id/deliver", h.HandleDeliverOrder)
 	orders.Post("/:order_id/accept", h.HandleAcceptDelivery)
 	orders.Post("/:order_id/request-revision", h.HandleRequestRevision)
@@ -178,6 +179,25 @@ func (h *orderHandler) HandleSubmitMessage(c *fiber.Ctx) error {
 		logging.String("buyer_id", buyerID),
 	)
 
+	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+// HandleCompleteOrderAttachmentUpload attaches a completed file upload to an order.
+func (h *orderHandler) HandleCompleteOrderAttachmentUpload(c *fiber.Ctx) error {
+	var req gateway.CompleteOrderAttachmentUploadRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": ErrInvalidRequestBody.Error()})
+	}
+	buyerID, err := h.auth.FreelancerID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	req.OrderID = c.Params("order_id")
+	req.BuyerID = buyerID
+	result, err := h.service.CompleteAttachmentUpload(c.UserContext(), req)
+	if err != nil {
+		return h.mapOrderError(c, err)
+	}
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
