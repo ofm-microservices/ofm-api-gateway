@@ -15,38 +15,14 @@ import (
 
 // MigrationModule wires the legacy registration adapter and session affinity.
 var MigrationModule = fx.Options(
-	fx.Invoke(InvokeRunRecoveryConsumer),
 	fx.Provide(ProvideMigrationRedis),
 	fx.Provide(ProvideSessionAffinity),
 	fx.Provide(ProvideLegacyRegistrationClient),
 	fx.Provide(ProvideLegacyReadClient),
 	fx.Provide(ProvideLegacySearchClient),
-	fx.Provide(ProvideRecoveryConsumer),
 	fx.Provide(ProvideMigrationAuthHandler),
 	fx.Provide(ProvideMigrationUserHandler),
 )
-
-// ProvideRecoveryConsumer constructs the Kafka consumer that replays fallback
-// commands through the gateway's normal HTTP and gRPC path.
-func ProvideRecoveryConsumer(cfg *config.Config) (migration.RecoveryConsumer, error) {
-	return migration.NewRecoveryConsumer(cfg.Migration.RecoveryBrokers, cfg.Migration.RecoveryTopic, cfg.Migration.RecoveryGroup, cfg.Migration.RecoveryDLQ, cfg.Migration.RecoveryBaseURL, cfg.Monolith.HTTPTimeout, cfg.Migration.RecoveryCompleted)
-}
-
-// InvokeRunRecoveryConsumer starts and stops fallback command replay with the
-// gateway lifecycle.
-func InvokeRunRecoveryConsumer(lc fx.Lifecycle, consumer migration.RecoveryConsumer, lg logging.Logger) {
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			go func() {
-				if err := consumer.Run(context.Background()); err != nil {
-					lg.Error("recovery consumer stopped", logging.Err(err))
-				}
-			}()
-			return nil
-		},
-		OnStop: func(context.Context) error { return consumer.Close() },
-	})
-}
 
 // ProvideMigrationRedis constructs the Redis client used for session affinity.
 func ProvideMigrationRedis(lc fx.Lifecycle, cfg *config.Config) (*redis.Client, error) {
@@ -62,7 +38,7 @@ func ProvideSessionAffinity(client *redis.Client, cfg *config.Config) (migration
 
 // ProvideLegacyRegistrationClient constructs the monolith registration adapter.
 func ProvideLegacyRegistrationClient(cfg *config.Config) (migration.LegacyRegistrationClient, error) {
-	return migration.NewLegacyRegistrationClient(cfg.Monolith.BaseURL, cfg.Monolith.HTTPTimeout)
+	return migration.NewLegacyRegistrationClient(cfg.Monolith.BaseURL, cfg.Monolith.RateLimitBypassToken, cfg.Monolith.HTTPTimeout)
 }
 
 // ProvideLegacyReadClient constructs the read-only fallback adapter.

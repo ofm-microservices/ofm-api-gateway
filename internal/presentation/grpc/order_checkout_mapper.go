@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"fmt"
 	"strings"
 
 	gateway "api-gateway/internal/domain"
@@ -217,25 +218,35 @@ func (m *orderCheckoutMapper) ToError(err error) error {
 	if !ok {
 		return err
 	}
+	detail := func(mapped error) error {
+		if mapped == nil {
+			return err
+		}
+		message := strings.TrimSpace(st.Message())
+		if message == "" {
+			message = "grpc request failed"
+		}
+		return fmt.Errorf("%w: grpc_code=%s grpc_message=%s", mapped, st.Code().String(), message)
+	}
 	switch st.Code() {
 	case codes.InvalidArgument:
 		if st.Message() == gateway.ErrInvalidDisputeSplit.Error() {
-			return gateway.ErrInvalidDisputeSplit
+			return detail(gateway.ErrInvalidDisputeSplit)
 		}
-		return gateway.ErrFailedToCreateOrder
+		return detail(gateway.ErrFailedToCreateOrder)
 	case codes.PermissionDenied:
 		if st.Message() == gateway.ErrOrderNotOwned.Error() {
 			return gateway.ErrOrderNotOwned
 		}
-		return gateway.ErrOrderNotOwned
+		return detail(gateway.ErrOrderNotOwned)
 	case codes.NotFound:
 		if st.Message() == gateway.ErrGigNotFound.Error() {
-			return gateway.ErrGigNotFound
+			return detail(gateway.ErrGigNotFound)
 		}
 		if st.Message() == gateway.ErrOrderNotFound.Error() {
-			return gateway.ErrOrderNotFound
+			return detail(gateway.ErrOrderNotFound)
 		}
-		return err
+		return detail(err)
 	case codes.FailedPrecondition:
 		switch st.Message() {
 		case gateway.ErrSelfOrderNotAllowed.Error():
@@ -261,11 +272,11 @@ func (m *orderCheckoutMapper) ToError(err error) error {
 		case gateway.ErrConnectOnboardingIncomplete.Error():
 			return gateway.ErrConnectOnboardingIncomplete
 		default:
-			return gateway.ErrInvalidGigState
+			return detail(gateway.ErrInvalidGigState)
 		}
 	case codes.AlreadyExists:
-		return gateway.ErrFailedToCreateOrder
+		return detail(gateway.ErrFailedToCreateOrder)
 	default:
-		return err
+		return detail(err)
 	}
 }

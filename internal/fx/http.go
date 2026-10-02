@@ -21,14 +21,18 @@ func ProvideHTTPServer(cfg *config.Config, lg logging.Logger) (httpserver.Server
 	if cfg.Monolith.BaseURL == "" {
 		return httpserver.NewServer(cfg.HTTP, lg)
 	}
+	readFallback, err := migration.NewFallbackReadClient(cfg.Monolith.BaseURL, cfg.Monolith.RateLimitBypassToken, cfg.Monolith.HTTPTimeout)
+	if err != nil {
+		return nil, err
+	}
 	if !cfg.Migration.WriteFallback {
-		return httpserver.NewServer(cfg.HTTP, lg)
+		return httpserver.NewServer(cfg.HTTP, lg, readFallback)
 	}
 	fallback, err := migration.NewFallbackWriteClient(cfg.Monolith.BaseURL, cfg.Monolith.RateLimitBypassToken, cfg.Monolith.HTTPTimeout)
 	if err != nil {
 		return nil, err
 	}
-	return httpserver.NewServer(cfg.HTTP, lg, fallback)
+	return httpserver.NewServer(cfg.HTTP, lg, fallback, readFallback)
 }
 
 // InvokeRunHTTPServer starts and stops the HTTP server with FX lifecycle hooks.

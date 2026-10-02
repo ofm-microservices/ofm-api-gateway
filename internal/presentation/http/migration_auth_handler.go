@@ -76,6 +76,7 @@ func (h *migrationAuthHandler) signUp(c *fiber.Ctx) error {
 
 	legacyCtx := migration.WithRecoveryMetadata(c.UserContext(), migration.RecoveryMetadata{
 		CommandID: c.Get("X-Command-ID"), CorrelationID: c.Get("X-Correlation-ID"), IdempotencyKey: c.Get("Idempotency-Key"),
+		TestRunID: c.Get("X-Test-Run-ID"),
 	})
 	legacyResult, legacyErr := h.legacy.Start(legacyCtx, req)
 	if legacyErr != nil {
@@ -84,6 +85,10 @@ func (h *migrationAuthHandler) signUp(c *fiber.Ctx) error {
 	if legacyResult == nil || strings.TrimSpace(legacyResult.SessionID) == "" {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "invalid legacy registration response"})
 	}
+	// Registration has a service-specific compatibility path rather than the
+	// generic write middleware. Expose the same resilience telemetry contract
+	// so load tests and observability count this accepted monolith fallback.
+	c.Set("X-Fallback-Accepted", "true")
 	// Recovery requests carry their durable command identity in Kafka and must
 	// not depend on the optional Redis session-affinity side effect. The
 	// monolith outbox is the source of truth for replay; Redis is only needed

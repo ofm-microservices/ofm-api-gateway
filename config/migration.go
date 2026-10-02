@@ -15,10 +15,4 @@ type MigrationConfig struct {
 	AuthReadFallback bool   `env:"MIGRATION_AUTH_READ_FALLBACK" envDefault:"false"`
 	UserReadFallback bool   `env:"MIGRATION_USER_READ_FALLBACK" envDefault:"true"`
 	WriteFallback    bool   `env:"MIGRATION_WRITE_FALLBACK" envDefault:"true"`
-	RecoveryBrokers  string `env:"MIGRATION_RECOVERY_KAFKA_BROKERS" envDefault:"127.0.0.1:9092"`
-	RecoveryTopic    string `env:"MIGRATION_RECOVERY_COMMAND_TOPIC" envDefault:"migration.recovery.commands"`
-	RecoveryGroup    string `env:"MIGRATION_RECOVERY_CONSUMER_GROUP" envDefault:"api-gateway-recovery"`
-	RecoveryDLQ      string `env:"MIGRATION_RECOVERY_DLQ_TOPIC" envDefault:"migration.recovery.commands.dlq"`
-	RecoveryCompleted string `env:"MIGRATION_RECOVERY_COMPLETED_TOPIC" envDefault:"migration.recovery.completed"`
-	RecoveryBaseURL  string `env:"MIGRATION_RECOVERY_BASE_URL" envDefault:"http://127.0.0.1:8080"`
 }

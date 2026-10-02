@@ -109,6 +109,25 @@ func (r *jwtPrincipalResolver) extractClaims(header string) (*commonjwt.Claims, 
 	return claims, nil
 }
 
+func principalFromAuthorization(header, secret string) string {
+	if strings.TrimSpace(header) == "" || strings.TrimSpace(secret) == "" {
+		return ""
+	}
+	token, err := commonjwt.ParseBearer(header)
+	if err != nil {
+		return ""
+	}
+	verifier, err := commonjwt.NewVerifier(commonjwt.Config{Secret: secret})
+	if err != nil {
+		return ""
+	}
+	claims, err := verifier.Validate(token)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(claims.Subject)
+}
+
 func (r *jwtPrincipalResolver) Claims(c *fiber.Ctx) (*commonjwt.Claims, error) {
 	value, ok := c.Locals(jwtClaimsLocalKey).(*commonjwt.Claims)
 	if !ok || value == nil {

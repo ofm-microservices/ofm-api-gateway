@@ -6,4 +6,7 @@ type HTTPConfig struct {
 	Port           int    `env:"HTTP_PORT" envDefault:"8080"`
 	Environment    string `env:"APP_ENV" envDefault:"local"`
 	FaultInjection FaultInjectionConfig
+	// JWTAccessSecret is passed to recovery middleware so injected failures
+	// can still preserve the authenticated principal before route middleware.
+	JWTAccessSecret string
 }

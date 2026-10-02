@@ -167,6 +167,7 @@ var _ = Describe("GigMapper", func() {
 		mapr := newGigMapper(logging.Logger(nil))
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, gateway.ErrInvalidGigID.Error()))).To(MatchError(gateway.ErrInvalidGigID))
 		Expect(mapr.ToError(status.Error(codes.NotFound, "missing"))).To(MatchError(gateway.ErrGigNotFound))
+		Expect(mapr.ToError(status.Error(codes.Unavailable, "gig service is down"))).To(MatchError(gateway.ErrGigServiceUnavailable))
 		Expect(mapr.ToError(errors.New("boom"))).To(MatchError(gateway.ErrFailedToCreateGig))
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, gateway.ErrInvalidFreelancerID.Error()))).To(MatchError(gateway.ErrInvalidFreelancerID))
 		Expect(mapr.ToError(status.Error(codes.InvalidArgument, gateway.ErrInvalidTitle.Error()))).To(MatchError(gateway.ErrInvalidTitle))

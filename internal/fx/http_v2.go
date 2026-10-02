@@ -31,7 +31,8 @@ func InvokeRegisterHTTPV2Routes(
 	authRoutes.Post("/sign-in", authHandler.HandleSignIn)
 	authRoutes.Post("/refresh", authHandler.HandleRefresh)
 	authRoutes.Post("/sign-out", authHandler.HandleSignOut)
-	authRoutes.Get("/me", authHandler.HandleMe)
+
+	httpserver.RegisterAuthenticatedMeRoute(authHandler, authRoutes)
 	user.RegisterMigrationRoutes(v2)
 	userOrder.RegisterRoutes(v2)
 	chat.RegisterRoutes(v2)

@@ -22,6 +22,7 @@ type RecoveryMetadata struct {
 	CommandID      string
 	CorrelationID  string
 	IdempotencyKey string
+	TestRunID      string
 }
 
 // WithRecoveryMetadata attaches fallback identity to a request context.
@@ -37,12 +38,13 @@ type LegacyRegistrationClient interface {
 }
 
 type legacyClient struct {
-	baseURL string
-	client  *http.Client
+	baseURL     string
+	bypassToken string
+	client      *http.Client
 }
 
 // NewLegacyRegistrationClient constructs the monolith registration adapter.
-func NewLegacyRegistrationClient(baseURL string, timeout time.Duration) (LegacyRegistrationClient, error) {
+func NewLegacyRegistrationClient(baseURL, bypassToken string, timeout time.Duration) (LegacyRegistrationClient, error) {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if baseURL == "" {
 		return nil, fmt.Errorf("monolith base URL is empty")
@@ -50,7 +52,7 @@ func NewLegacyRegistrationClient(baseURL string, timeout time.Duration) (LegacyR
 	if timeout <= 0 {
 		timeout = 5 * time.Second
 	}
-	return &legacyClient{baseURL: baseURL, client: &http.Client{Timeout: timeout}}, nil
+	return &legacyClient{baseURL: baseURL, bypassToken: strings.TrimSpace(bypassToken), client: &http.Client{Timeout: timeout}}, nil
 }
 
 func (c *legacyClient) Start(ctx context.Context, req gateway.SignUpRequest) (*gateway.SignUpResult, error) {
@@ -103,6 +105,12 @@ func (c *legacyClient) do(ctx context.Context, method, path string, payload any,
 	req.Header.Set("X-Command-ID", commandID)
 	req.Header.Set("X-Correlation-ID", correlationID)
 	req.Header.Set("Idempotency-Key", idempotencyKey)
+	if c.bypassToken != "" {
+		req.Header.Set("X-Monolith-Rate-Limit-Bypass", c.bypassToken)
+	}
+	if testRunID := strings.TrimSpace(metadata.TestRunID); testRunID != "" {
+		req.Header.Set("X-Test-Run-ID", testRunID)
+	}
 	response, err := c.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("legacy request failed: %w", err)

@@ -58,6 +58,20 @@ func (h *authHandler) RegisterRoutes(router fiber.Router) {
 	auth.Post("/sign-up/complete", h.HandleCompleteRegistration)
 }
 
+// RegisterMeRoute mounts the authenticated current-user endpoint with the
+// gateway JWT middleware that populates the request principal.
+func (h *authHandler) RegisterMeRoute(router fiber.Router) {
+	router.Get("/me", h.auth.Middleware(), h.HandleMe)
+}
+
+// RegisterAuthenticatedMeRoute mounts /me while preserving the handler's JWT
+// middleware without widening the legacy AuthHandler contract.
+func RegisterAuthenticatedMeRoute(handler AuthHandler, router fiber.Router) {
+	if registrar, ok := handler.(interface{ RegisterMeRoute(fiber.Router) }); ok {
+		registrar.RegisterMeRoute(router)
+	}
+}
+
 // HandleSignUp parses the public signup payload and starts registration.
 func (h *authHandler) HandleSignUp(c *fiber.Ctx) error {
 	started := time.Now()
