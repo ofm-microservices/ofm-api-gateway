@@ -2,87 +2,28 @@
 
 ## Purpose
 
-`ofm-api-gateway` is the public entrypoint into the OFM microservice system.
-It owns HTTP request validation and transport concerns, then forwards work to
-internal services. It does not own business persistence and it should not
-implement downstream domain logic such as password hashing or registration
-orchestration.
+The API Gateway is the public HTTP entry point for OFM. It validates public requests and forwards them to owning services; it does not own business data, password hashing, or saga state. Status: active.
 
-Current responsibilities:
+## Boundaries and interfaces
 
-- expose public HTTP endpoints
-- validate signup payloads
-- call `registration-saga-service` over gRPC
+- Exposes the versioned public HTTP API.
+- Calls registration, order, user, gig, file, chat, payment, and review services through internal contracts.
+- Owns transport validation, authentication middleware, routing, and configured fallback policy.
+- Does not persist business entities or publish service-owned domain events.
 
-## Run
+Canonical HTTP and gRPC contracts live in the gateway handlers and ofm-common/proto. WebSocket connections are handled by realtime-service.
 
-Local process:
+## Local development
 
-```bash
-cp .env.example .env
-just run
-```
+Run from this repository:
 
-Direct Go command:
+    cp .env.example .env
+    just run
+    go test ./...
 
-```bash
-set -a && source .env && set +a && go run ./cmd/api-gateway
-```
+Configuration is read from .env: APP_ENV and LOG_LEVEL select runtime behavior, HTTP_* controls the public listener, service *_ADDRESS values select internal gRPC targets, and JWT settings control token validation. Do not commit .env or secrets. Run the complete stack from ofm-infra.
 
-Docker stack from the shared infra repo:
+## Build and operations
 
-```bash
-cd ../ofm-infra
-just infra-up
-```
+Dockerfile builds ofm/api-gateway:<tag> and ofm-infra deploys the api-gateway Helm workload. Use structured logs, OpenTelemetry traces, and gateway metrics to diagnose validation and downstream failures. Local ports are defined in PORTS.md.
 
-## Environment
-
-The service expects the following variables.
-
-```env
-APP_ENV=local
-LOG_LEVEL=info
-
-HTTP_HOST=0.0.0.0
-HTTP_PORT=8080
-
-REGISTRATION_SAGA_ADDRESS=127.0.0.1:9500
-```
-
-Notes:
-
-- `REGISTRATION_SAGA_ADDRESS` is the internal gRPC target for registration
-  startup.
-- Registration and order startup use their owning services' gRPC boundaries;
-  the gateway does not connect to a message broker.
-
-## Technologies
-
-Core runtime:
-
-- Go
-- Fiber v2 for HTTP transport
-- gRPC client for internal service calls
-- Uber Fx for dependency wiring
-- Zap for structured JSON logging
-- `caarlos0/env` + `godotenv` for configuration loading
-
-Main libraries from `go.mod`:
-
-- `github.com/gofiber/fiber/v2`
-- `google.golang.org/grpc`
-- `go.uber.org/fx`
-- `go.uber.org/zap`
-- `github.com/caarlos0/env/v11`
-
-## Architecture Notes
-
-- `internal/domain` contains gateway request and response contracts
-- `internal/application` performs validation and delegates to downstream clients
-- `internal/presentation/http` owns HTTP handlers
-- `internal/presentation/grpc` owns the registration saga client
-- `internal/fx` wires the process explicitly
-
-The gateway should remain thin. If a behavior belongs to auth, user, mail, or
-registration orchestration, keep it there.
