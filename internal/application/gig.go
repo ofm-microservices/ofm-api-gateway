@@ -178,6 +178,10 @@ func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequ
 		freelancer        *gateway.User
 		freelancerSummary *gateway.ReviewSummary
 		gigErr            error
+		reviewsErr        error
+		summaryErr        error
+		freelancerErr     error
+		freelancerSumErr  error
 	}
 	var (
 		wg  sync.WaitGroup
@@ -202,6 +206,7 @@ func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequ
 		mu.Lock()
 		defer mu.Unlock()
 		if err != nil {
+			out.reviewsErr = err
 			return
 		}
 		out.reviews = reviews
@@ -212,6 +217,7 @@ func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequ
 		mu.Lock()
 		defer mu.Unlock()
 		if err != nil {
+			out.summaryErr = err
 			return
 		}
 		out.summary = summary
@@ -222,6 +228,7 @@ func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequ
 		mu.Lock()
 		defer mu.Unlock()
 		if err != nil {
+			out.freelancerErr = err
 			return
 		}
 		out.freelancer = user
@@ -232,6 +239,7 @@ func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequ
 		mu.Lock()
 		defer mu.Unlock()
 		if err != nil {
+			out.freelancerSumErr = err
 			return
 		}
 		out.freelancerSummary = summary
@@ -239,6 +247,18 @@ func (s *gigService) GetBySlug(ctx context.Context, req gateway.GetGigBySlugRequ
 	wg.Wait()
 	if out.gigErr != nil {
 		return nil, out.gigErr
+	}
+	if out.reviewsErr != nil {
+		return nil, out.reviewsErr
+	}
+	if out.summaryErr != nil {
+		return nil, out.summaryErr
+	}
+	if out.freelancerErr != nil {
+		return nil, out.freelancerErr
+	}
+	if out.freelancerSumErr != nil {
+		return nil, out.freelancerSumErr
 	}
 	if out.gig == nil {
 		return nil, gateway.ErrGigNotFound

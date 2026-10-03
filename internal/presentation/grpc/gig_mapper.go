@@ -267,6 +267,10 @@ func (m *gigMapper) ToError(err error) error {
 	case gateway.ErrInvalidGigState.Error():
 		return gateway.ErrInvalidGigState
 	default:
+		switch st.Code() {
+		case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted:
+			return gateway.ErrGigServiceUnavailable
+		}
 		if st.Code() == codes.NotFound {
 			return gateway.ErrGigNotFound
 		}
@@ -302,6 +306,9 @@ func (m *gigMapper) toGig(res *gigv1.Gig) *gateway.Gig {
 		PublishedAt:           res.GetPublishedAt(),
 		CreatedAt:             res.GetCreatedAt(),
 		UpdatedAt:             res.GetUpdatedAt(),
+		Packages:              make([]gateway.GigPackage, 0),
+		Questions:             make([]gateway.GigQuestion, 0),
+		Media:                 make([]gateway.GigMedia, 0),
 	}
 
 	if len(res.GetPackages()) > 0 {

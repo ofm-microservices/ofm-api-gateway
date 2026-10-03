@@ -7,11 +7,13 @@ import (
 	gateway "api-gateway/internal/domain"
 
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/observability/metadata"
 	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
 	ordercheckoutv1 "github.com/ofm-microservices/ofm-common/proto/ordercheckout/v1"
 	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	grpcpkg "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 type orderCheckoutClient struct {
@@ -35,6 +37,7 @@ func NewOrderCheckoutClient(cfg OrderSagaConfig, log Logger) (OrderCheckoutClien
 		grpcpkg.WithTransportCredentials(insecure.NewCredentials()),
 		grpcpkg.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpcpkg.WithUnaryInterceptor(metrics.UnaryClientInterceptor()),
+		grpcpkg.WithUnaryInterceptor(metadata.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		return nil, err
@@ -50,6 +53,18 @@ func NewOrderCheckoutClient(cfg OrderSagaConfig, log Logger) (OrderCheckoutClien
 func (c *orderCheckoutClient) StartOrder(ctx context.Context, req gateway.CreateOrderRequest) (*gateway.CreateOrderResult, error) {
 	res, err := c.cl.StartOrder(ctx, c.mapr.ToStartOrderRequest(req))
 	if err != nil {
+		st, ok := status.FromError(err)
+		if ok {
+			c.log.Error("order StartOrder gRPC failed",
+				logging.String("operation", "grpc.order.start"),
+				logging.String("grpc_code", st.Code().String()),
+				logging.String("grpc_message", st.Message()),
+				logging.String("buyer_id", req.BuyerID),
+				logging.String("gig_id", req.GigID),
+				logging.String("package_id", req.PackageID),
+				logging.Err(err),
+			)
+		}
 		return nil, c.mapr.ToError(err)
 	}
 	return c.mapr.ToStartOrderResponse(res), nil

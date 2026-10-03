@@ -9,7 +9,9 @@ import (
 	gigv1 "github.com/ofm-microservices/ofm-common/proto/gig/v1"
 	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	grpcpkg "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 type gigClient struct {
@@ -59,10 +61,27 @@ func (c *gigClient) CreateDraft(ctx context.Context, req gateway.CreateGigDraftR
 func (c *gigClient) UpdateBasicInfo(ctx context.Context, req gateway.UpdateGigBasicInfoRequest) (*gateway.Gig, error) {
 	res, err := c.cl.UpdateBasicInfo(ctx, c.mapr.ToUpdateBasicInfoRequest(req))
 	if err != nil {
+		if c.log != nil {
+			st, ok := status.FromError(err)
+			if ok && isBusinessStatus(st.Code()) {
+				c.log.Warn("gig update returned a business condition", logging.Err(err))
+			} else {
+				c.log.Error("gig update gRPC call failed", logging.Err(err))
+			}
+		}
 		return nil, c.mapr.ToError(err)
 	}
 
 	return c.mapr.ToUpdateBasicInfoResponse(res), nil
+}
+
+func isBusinessStatus(code codes.Code) bool {
+	switch code {
+	case codes.InvalidArgument, codes.NotFound, codes.AlreadyExists, codes.PermissionDenied, codes.FailedPrecondition, codes.Unauthenticated, codes.Aborted:
+		return true
+	default:
+		return false
+	}
 }
 
 func (c *gigClient) ReplacePackages(ctx context.Context, req gateway.ReplaceGigPackagesRequest) (*gateway.Gig, error) {

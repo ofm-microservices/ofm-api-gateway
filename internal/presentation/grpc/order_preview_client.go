@@ -7,6 +7,7 @@ import (
 	gateway "api-gateway/internal/domain"
 
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
+	"github.com/ofm-microservices/ofm-common/pkg/observability/metadata"
 	"github.com/ofm-microservices/ofm-common/pkg/observability/metrics"
 	orderwritev1 "github.com/ofm-microservices/ofm-common/proto/orderwrite/v1"
 	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -36,6 +37,7 @@ func NewOrderPreviewClient(cfg OrderServiceConfig, log Logger) (OrderPreviewClie
 		grpcpkg.WithTransportCredentials(insecure.NewCredentials()),
 		grpcpkg.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpcpkg.WithUnaryInterceptor(metrics.UnaryClientInterceptor()),
+		grpcpkg.WithUnaryInterceptor(metadata.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		return nil, err

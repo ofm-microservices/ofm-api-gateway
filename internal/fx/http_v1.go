@@ -3,13 +3,14 @@ package appfx
 import (
 	"api-gateway/config"
 	service "api-gateway/internal/application"
+	"api-gateway/internal/migration"
 	httpserver "api-gateway/internal/presentation/http"
 	"github.com/ofm-microservices/ofm-common/pkg/logging"
 
 	"go.uber.org/fx"
 )
 
-// HTTPV1Module wires versioned HTTP handlers under the global /v1 prefix.
+// HTTPV1Module wires versioned HTTP handlers under the canonical /api/v1 prefix.
 var HTTPV1Module = fx.Options(
 	fx.Provide(ProvideHTTPV1AuthHandler),
 	fx.Provide(ProvideHTTPV1UserHandler),
@@ -90,9 +91,10 @@ func ProvideHTTPV1ReviewHandler(
 // ProvideHTTPV1SearchHandler constructs the public search HTTP handler.
 func ProvideHTTPV1SearchHandler(
 	service httpserver.SearchService,
+	legacy migration.LegacySearchClient,
 	lg logging.Logger,
 ) (httpserver.SearchHandler, error) {
-	return httpserver.NewSearchHandler(service, lg)
+	return httpserver.NewSearchHandler(service, lg, legacy)
 }
 
 // ProvideHTTPV1OnboardingHandler constructs the freelancer onboarding handler.
@@ -106,9 +108,7 @@ func ProvideHTTPV1OnboardingHandler(
 
 // InvokeRegisterHTTPV1Routes registers versioned HTTP routes on the server.
 func InvokeRegisterHTTPV1Routes(srv httpserver.Server, authHandler httpserver.AuthHandler, userHandler httpserver.UserHandler, userOrderHandler httpserver.UserOrderHandler, chatHandler httpserver.ChatHandler, gigHandler httpserver.GigHandler, orderHandler httpserver.OrderHandler, reviewHandler httpserver.ReviewHandler, searchHandler httpserver.SearchHandler, onboardingHandler httpserver.OnboardingHandler) {
-	srv.App().Get("/v1/search", searchHandler.HandleSearch)
-
-	v1 := srv.App().Group("/v1")
+	v1 := srv.App().Group("/api/v1")
 	authHandler.RegisterRoutes(v1)
 	userHandler.RegisterRoutes(v1)
 	userOrderHandler.RegisterRoutes(v1)

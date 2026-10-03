@@ -29,16 +29,17 @@ func (m *searchMapper) ToSearchResponse(res *searchv1.SearchResponse) *gateway.S
 	out.Items = make([]gateway.SearchResult, 0, len(res.GetServices()))
 	for _, item := range res.GetServices() {
 		out.Items = append(out.Items, gateway.SearchResult{
-			ID:           item.GetId(),
-			Title:        item.GetTitle(),
-			Description:  item.GetDescription(),
-			Picture:      item.GetPicture(),
-			ReviewsCount: item.GetReviewsCount(),
-			Rating:       item.GetRating(),
-			MinPrice:     item.GetMinPrice(),
-			Slug:         item.GetSlug(),
-			FreelancerID: item.GetFreelancerId(),
-			PublishedAt:  item.GetPublishedAt(),
+			ID:             item.GetId(),
+			Title:          item.GetTitle(),
+			Description:    item.GetDescription(),
+			Picture:        item.GetPicture(),
+			ReviewsCount:   item.GetReviewsCount(),
+			Rating:         item.GetRating(),
+			MinPrice:       item.GetMinPrice(),
+			Slug:           item.GetSlug(),
+			FreelancerID:   item.GetFreelancerId(),
+			SellerUsername: item.GetSellerUsername(),
+			PublishedAt:    item.GetPublishedAt(),
 		})
 	}
 	return out

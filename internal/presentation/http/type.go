@@ -112,6 +112,7 @@ type OrderHandler interface {
 	HandleConfirmOrder(c *fiber.Ctx) error
 	HandleSubmitRequirements(c *fiber.Ctx) error
 	HandleSubmitMessage(c *fiber.Ctx) error
+	HandleCompleteOrderAttachmentUpload(c *fiber.Ctx) error
 	HandleDeliverOrder(c *fiber.Ctx) error
 	HandleAcceptDelivery(c *fiber.Ctx) error
 	HandleRequestRevision(c *fiber.Ctx) error

@@ -380,7 +380,7 @@ func (s *registrationService) SignUp(ctx context.Context, req gateway.SignUpRequ
 		Surname:   strings.TrimSpace(req.Surname),
 	})
 	if err != nil {
-		log.Error("failed to start registration",
+		LogOperationFailure(log, "failed to start registration", err,
 			logging.Operation("registration.sign_up"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -443,7 +443,9 @@ func (s *registrationService) VerifyEmail(ctx context.Context, req gateway.Verif
 		Code:      code,
 	})
 	if err != nil {
-		log.Error("failed to verify registration email",
+		// Pending saga state is expected while the asynchronous registration
+		// workflow drains; the HTTP layer returns a retryable business status.
+		log.Info("registration email verification is pending",
 			logging.Operation("registration.verify_email"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -469,7 +471,7 @@ func (s *registrationService) CompleteRegistration(ctx context.Context, req gate
 
 	status, err := s.client.GetRegistrationStatus(ctx, sessionID, clientID)
 	if err != nil {
-		log.Error("failed to get registration status",
+		LogOperationFailure(log, "failed to get registration status", err,
 			logging.Operation("registration.status"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -487,7 +489,7 @@ func (s *registrationService) CompleteRegistration(ctx context.Context, req gate
 
 	result, err := s.tokens.IssueRegistrationTokens(ctx, status.UserID)
 	if err != nil {
-		log.Error("failed to issue registration tokens",
+		LogOperationFailure(log, "failed to issue registration tokens", err,
 			logging.Operation("registration.issue_tokens"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -516,7 +518,7 @@ func (s *authSessionService) SignIn(ctx context.Context, req gateway.SignInReque
 		Password:   password,
 	})
 	if err != nil {
-		log.Error("failed to sign in",
+		LogOperationFailure(log, "failed to sign in", err,
 			logging.Operation("auth.sign_in"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -540,7 +542,7 @@ func (s *authSessionService) Refresh(ctx context.Context, req gateway.RefreshTok
 		RefreshToken: refreshToken,
 	})
 	if err != nil {
-		log.Error("failed to refresh tokens",
+		LogOperationFailure(log, "failed to refresh tokens", err,
 			logging.Operation("auth.refresh"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -562,7 +564,7 @@ func (s *authSessionService) SignOut(ctx context.Context, req gateway.SignOutReq
 	if err := s.client.SignOut(ctx, gateway.SignOutRequest{
 		RefreshToken: refreshToken,
 	}); err != nil {
-		log.Error("failed to sign out",
+		LogOperationFailure(log, "failed to sign out", err,
 			logging.Operation("auth.sign_out"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -607,7 +609,7 @@ func (s *orderService) CreateOrder(ctx context.Context, req gateway.CreateOrderR
 		RequestedAt:    time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
-		log.Error("failed to start order",
+		LogOperationFailure(log, "failed to start order", err,
 			logging.Operation("order.create"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -755,7 +757,7 @@ func (s *orderService) ConfirmOrder(ctx context.Context, req gateway.ConfirmOrde
 		RequestedAt:    time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
-		log.Error("failed to confirm order",
+		LogOperationFailure(log, "failed to confirm order", err,
 			logging.Operation("order.confirm"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -810,7 +812,7 @@ func (s *orderService) DeliverOrder(ctx context.Context, req gateway.DeliverOrde
 		RequestedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
-		log.Error("failed to deliver order",
+		log.Warn("order delivery returned a business condition",
 			logging.Operation("order.deliver"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -838,7 +840,7 @@ func (s *orderService) AcceptDelivery(ctx context.Context, req gateway.AcceptDel
 		RequestedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
-		log.Error("failed to accept order delivery",
+		log.Warn("order delivery acceptance returned a business condition",
 			logging.Operation("order.accept_delivery"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -870,7 +872,7 @@ func (s *orderService) RequestRevision(ctx context.Context, req gateway.RequestR
 		RequestedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
-		log.Error("failed to request order revision",
+		LogOperationFailure(log, "failed to request order revision", err,
 			logging.Operation("order.request_revision"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -902,7 +904,7 @@ func (s *orderService) OpenDispute(ctx context.Context, req gateway.OpenDisputeR
 		RequestedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
-		log.Error("failed to open order dispute",
+		log.Warn("order dispute returned a business condition",
 			logging.Operation("order.open_dispute"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -936,7 +938,7 @@ func (s *orderService) ResolveDispute(ctx context.Context, req gateway.ResolveDi
 		RequestedAt:          time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
-		log.Error("failed to resolve order dispute",
+		LogOperationFailure(log, "failed to resolve order dispute", err,
 			logging.Operation("order.resolve_dispute"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -960,7 +962,7 @@ func (s *onboardingService) StartFreelancerOnboarding(ctx context.Context, req g
 		Country: strings.TrimSpace(req.Country),
 	})
 	if err != nil {
-		log.Error("failed to start freelancer onboarding",
+		LogOperationFailure(log, "failed to start freelancer onboarding", err,
 			logging.Operation("payment.onboarding.start"),
 			logging.Attempt(1),
 			logging.Retryable(false),
@@ -1114,7 +1116,7 @@ func (s *authMeService) GetMe(ctx context.Context, userID string) (*gateway.User
 
 	user, err := s.client.GetUserPreviewByID(ctx, userID)
 	if err != nil {
-		s.log.Error("failed to resolve auth me user preview",
+		LogOperationFailure(s.log, "failed to resolve auth me user preview", err,
 			logging.Operation("auth_me.get_me"),
 			logging.String("user_id", userID),
 			logging.Err(err),

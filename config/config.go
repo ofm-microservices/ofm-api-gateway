@@ -12,7 +12,6 @@ type Config struct {
 	Metrics          MetricsConfig
 	Tracing          TracingConfig
 	JWT              JWTConfig
-	NATS             NATSConfig
 	RegistrationSaga RegistrationSagaConfig
 	OrderSaga        OrderSagaConfig
 	OrderService     OrderServiceConfig
@@ -23,6 +22,8 @@ type Config struct {
 	GigService       GigServiceConfig
 	PaymentService   PaymentServiceConfig
 	ChatService      ChatServiceConfig
+	Monolith         MonolithConfig
+	Migration        MigrationConfig
 }
 
 // Load reads environment variables into Config and applies defaults.
@@ -33,6 +34,7 @@ func Load() (*Config, error) {
 	if err := env.Parse(cfg); err != nil {
 		return nil, WrapParseEnvConfigError(err)
 	}
+	cfg.HTTP.JWTAccessSecret = cfg.JWT.AccessSecret
 
 	return cfg, nil
 }
